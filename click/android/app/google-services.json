@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "798541819124",
+    "project_id": "click-7f35e",
+    "storage_bucket": "click-7f35e.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:798541819124:android:bed072032d597997ca42a1",
+        "android_client_info": {
+          "package_name": "com.example.click"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTSemPfKAdXE8pb_Z4BPA8CVecDEW0Ia0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
