@@ -1,28 +1,33 @@
-import 'package:click/pages/allPosts.dart';
+import 'package:click/pages/sign_in_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../addPost.dart';
-import '../profile.dart';
+import '../allPosts.dart';
 
 
-class UserPage extends StatefulWidget {
-  final String id;  
-  final int selectedIndex;
-  UserPage({required this.id,required this.selectedIndex});
+class GuestPage extends StatefulWidget {
 
   @override
-  _UserPageState createState() => _UserPageState(id: id, selectedIndex: selectedIndex);
+  _GuestPageState createState() => _GuestPageState();
 }
 
-class _UserPageState extends State<UserPage> {
-  String id;
-  int selectedIndex;
-  _UserPageState({required this.id, required this.selectedIndex});
+class _GuestPageState extends State<GuestPage> {
+  int selectedIndex = 0;
+  @override
+  final Stream<QuerySnapshot> _usersStream =
+  FirebaseFirestore.instance.collection('posts').snapshots();
 
   void _onItemTapped(int index) {
     setState(() {
       selectedIndex = index;
     });
+
+    if(selectedIndex>0){
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => SignIn(),
+        ),
+      );
+    }
   }
 
 
@@ -30,8 +35,8 @@ class _UserPageState extends State<UserPage> {
   Widget build(BuildContext context) {
     List<Widget> _widgetOptions = <Widget>[
       AllPostPage(),
-      AddPostPage(id: widget.id),
-      Profile(id: widget.id),
+      SizedBox.shrink(),
+      SizedBox.shrink(),
     ];
 
     return Scaffold(
@@ -39,7 +44,7 @@ class _UserPageState extends State<UserPage> {
       bottomNavigationBar: BottomNavigationBar(
         showUnselectedLabels: false,
         showSelectedLabels: false,
-          enableFeedback: false,
+        enableFeedback: false,
         elevation: 0,
         backgroundColor:  Color.fromRGBO(15, 32, 26, 1),
         items: const <BottomNavigationBarItem>[

@@ -33,7 +33,7 @@ class ProfileMenuWidget extends StatelessWidget {
         ),
         child: Icon(icon, color: Color.fromRGBO(22, 31, 10, 1)),
       ),
-      title: Text(title, style: Theme.of(context).textTheme.bodyLarge?.apply(color: textColor)),
+      title: Text(title, style:  TextStyle(fontSize: 15,  fontFamily: 'Montserrat', fontWeight: FontWeight.w500,)),
       trailing: endIcon? Container(
           width: 30,
           height: 30,

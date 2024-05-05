@@ -45,6 +45,8 @@ dependencies:
   path: ^1.9.0
   firebase_app_check: ^0.2.2+2
   line_awesome_flutter: ^2.0.0
+  flutter_staggered_grid_view: ^0.4.0
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:
@@ -85,12 +87,16 @@ flutter:
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
+  fonts:
+      - family: Montserrat
+        fonts:
+          - asset: assets/fonts/Montserrat-Regular.ttf
+            weight: 400 # Normal
+          - asset: assets/fonts/Montserrat-VariableFont_wght.ttf
+            weight: 100 # Thin
+          - asset: assets/fonts/Montserrat-Medium.ttf
+            weight: 500 # Medium
+
   #   - family: Trajan Pro
   #     fonts:
   #       - asset: fonts/TrajanPro.ttf

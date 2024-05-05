@@ -1,9 +1,8 @@
 import 'package:click/widgets/profileMenu.dart';
-import 'package:click/pages/updateProfile.dart';
+import 'package:click/pages/editProfile.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:line_awesome_flutter/line_awesome_flutter.dart';
 import '../models/userModel.dart';
 import 'sign_in_page.dart';
 
@@ -77,8 +76,8 @@ class _ProfileState extends State<Profile>  {
                 ),
               ),
               const SizedBox(height: 10),
-              Text(name ?? '', style: Theme.of(context).textTheme.headline4),
-              Text(emaill ?? '', style: Theme.of(context).textTheme.bodyText2),
+              Text(name ?? '', style: TextStyle(fontSize: 25,  fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
+              Text(emaill ?? '', style: TextStyle(fontSize: 16,  fontFamily: 'Montserrat', fontWeight: FontWeight.w400,),),
               const SizedBox(height: 20),
 
               /// -- BUTTON
@@ -90,13 +89,13 @@ class _ProfileState extends State<Profile>  {
                     ),
                   );
                 },
-                color: Color.fromRGBO(172, 193, 91, 1),
+                color: Color.fromRGBO(15, 32, 26, 1),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
                 height: 50,
                 child: Center(
-                  child: Text("Редактировать", style: TextStyle(color: Colors.white),),
+                  child: Text("Редактировать", style: TextStyle(color: Colors.white, fontSize: 15,  fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
                 ),
               ),
               const SizedBox(height: 30),

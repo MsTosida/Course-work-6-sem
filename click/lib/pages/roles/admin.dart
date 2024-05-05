@@ -1,3 +1,4 @@
+import 'package:click/pages/allPosts.dart';
 import 'package:click/pages/profile.dart';
 import 'package:flutter/material.dart';
 
@@ -24,7 +25,7 @@ class _AdminPageState extends State<AdminPage> {
   @override
   Widget build(BuildContext context) {
     List<Widget> _widgetOptions = <Widget>[
-      AdminPanel(),
+      AllPostPage(),
       AdminPanel(),
       Profile(id: widget.id),
     ];
@@ -34,7 +35,7 @@ class _AdminPageState extends State<AdminPage> {
       bottomNavigationBar: BottomNavigationBar(
         showUnselectedLabels: false,
         showSelectedLabels: false,
-        backgroundColor: Color.fromRGBO(172, 193, 91, 1),
+        backgroundColor: Color.fromRGBO(15, 32, 26, 1),
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.home),

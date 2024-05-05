@@ -49,7 +49,7 @@ class _controState extends State<contro> {
       });
     } else {
     FirebaseFirestore.instance
-        .collection("users") //.where('uid', isEqualTo: user!.uid)
+        .collection("users")
         .doc(user!.uid)
         .get()
         .then((value) {

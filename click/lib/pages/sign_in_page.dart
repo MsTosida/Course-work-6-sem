@@ -1,4 +1,5 @@
 import 'package:animate_do/animate_do.dart';
+import 'package:click/pages/roles/guest.dart';
 import 'package:click/pages/sign_up_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ class _SignInState extends State<SignIn> {
   bool visible = false;
   bool _obscureText = true;
   bool _showCloseButton = false;
+  bool _isLoading = false;
   final _formkey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -84,7 +86,8 @@ class _SignInState extends State<SignIn> {
                             "Добро пожаловать!",
                             style: TextStyle(
                               color: Color.fromRGBO(22, 31, 10, 1),
-                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w500,
                               fontSize: 25,
                             ),
                           ),
@@ -120,7 +123,7 @@ class _SignInState extends State<SignIn> {
                                   decoration: InputDecoration(
                                       border: InputBorder.none,
                                       hintText: "Email",
-                                      hintStyle: TextStyle(color: Colors.grey.shade700)
+                                      hintStyle: TextStyle(color: Colors.grey.shade700, fontFamily: 'Montserrat', fontWeight: FontWeight.w400,)
                                   ),
                                   validator: (value) {
                                     if (value!.length == 0) {
@@ -148,7 +151,7 @@ class _SignInState extends State<SignIn> {
                                   decoration: InputDecoration(
                                     border: InputBorder.none,
                                     hintText: "Пароль",
-                                    hintStyle: TextStyle(color: Colors.grey.shade700),
+                                    hintStyle: TextStyle(color: Colors.grey.shade700, fontFamily: 'Montserrat', fontWeight: FontWeight.w400,),
                                     suffixIcon: IconButton(
                                       icon: Icon(
                                         _obscureText ? Icons.visibility : Icons.visibility_off,
@@ -186,26 +189,28 @@ class _SignInState extends State<SignIn> {
                       SizedBox(height: 20,),
                       FadeInUp(duration: Duration(milliseconds: 1900), child: MaterialButton(
                         onPressed: () async {
-                          setState(() {
-                            visible = true;
-                          });
-                          final message = await login(
-                            emailController.text,
-                            passwordController.text,
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(message),
-                            ),
-                          );
 
-                          if (message.contains('Success')) {
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (context) => HomePage(),
+                          setState(() {
+                            _isLoading = true;
+                          });
+
+                            final message = await signIn(
+                              emailController.text,
+                              passwordController.text,
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(message),
                               ),
                             );
-                          }
+
+                            if (message.contains('Добро пожаловать!')) {
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(
+                                  builder: (context) => HomePage(),
+                                ),
+                              );
+                            }
 
                         },
                         color: Color.fromRGBO(15, 32, 26, 1),
@@ -214,7 +219,12 @@ class _SignInState extends State<SignIn> {
                         ),
                         height: 50,
                         child: Center(
-                          child: Text("Войти", style: TextStyle(color: Colors.white),),
+                          child: Stack(
+                            children: [
+                              if (_isLoading) CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color.fromRGBO(172, 193, 91, 1)), )
+                              else Text("Войти", style: TextStyle(color: Colors.white, fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
+                            ],
+                          ),
                         ),
                       )),
                       SizedBox(height: 30,),
@@ -229,7 +239,7 @@ class _SignInState extends State<SignIn> {
                                       ),
                                     );
                                   },
-                                  child: Text("Еще не с нами? Зарегестрируйтесь!", style: TextStyle(color: Color.fromRGBO(172, 193, 91, 1)),)))),
+                                  child: Text("Еще не с нами? Зарегестрируйтесь!", style: TextStyle(color: Color.fromRGBO(172, 193, 91, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),)))),
 
                     ],
                   ),
@@ -260,7 +270,7 @@ class _SignInState extends State<SignIn> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => HomePage(), // Замените AnotherPage на вашу страницу
+                      builder: (context) => GuestPage(), // Замените AnotherPage на вашу страницу
                     ),
                   );
                 },
@@ -273,31 +283,35 @@ class _SignInState extends State<SignIn> {
     );
   }
 
-  void signIn(String email, String password) async {
-    if (_formkey.currentState!.validate()) {
-      try {
-        UserCredential userCredential =
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomePage(),
-          ),
-        );
-      } on FirebaseAuthException catch (e) {
-        if (e.code == 'user-not-found') {
-          print('Такого пользователя не существует');
-        } else if (e.code == 'wrong-password') {
-          print('Неверный пароль');
-        }
-      }
-    }
-  }
+  // void signIn(String email, String password) async {
+  //   if (_formkey.currentState!.validate()) {
+  //     try {
+  //       UserCredential userCredential =
+  //       await FirebaseAuth.instance.signInWithEmailAndPassword(
+  //         email: email,
+  //         password: password,
+  //       );
+  //       Navigator.pushReplacement(
+  //         context,
+  //         MaterialPageRoute(
+  //           builder: (context) => HomePage(),
+  //         ),
+  //       );
+  //       setState(() {
+  //         _isLoading = false;
+  //       });
+  //       return;
+  //     } on FirebaseAuthException catch (e) {
+  //       if (e.code == 'user-not-found') {
+  //         print('Такого пользователя не существует');
+  //       } else if (e.code == 'wrong-password') {
+  //         print('Неверный пароль');
+  //       }
+  //     }
+  //   }
+  // }
 
-  Future<String> login(String email, String password) async {
+  Future<String> signIn(String email, String password) async {
     if (_formkey.currentState!.validate()) {
       try {
         UserCredential userCredential =
@@ -305,19 +319,17 @@ class _SignInState extends State<SignIn> {
           email: email,
           password: password,
         );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomePage(),
-          ),
-        );
-        return 'Success';
+        return 'Добро пожаловать!';
       } on FirebaseAuthException catch (e) {
         if (e.code == 'user-not-found') {
-          return 'No user found for that email.';
+          return 'Юзера с таким email нет';
         } else if (e.code == 'wrong-password') {
-          return 'Wrong password provided for that user.';
+          return 'Неверный пароль';
         }
+      }finally {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
     return 'Неверные данные'; // Добавлено возвращение сообщения об ошибке

@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:click/pages/roles/guest.dart';
 import 'package:click/pages/sign_in_page.dart';
 import 'package:click/widgets/utils.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -19,8 +20,9 @@ class SignUp extends StatefulWidget {
 
 class _SignUpState extends State<SignUp> {
   final _auth = FirebaseAuth.instance;
-  final _formkey = GlobalKey<FormState>();
+  final _formkeyy = GlobalKey<FormState>();
   bool _showCloseButton = false;
+  bool _isLoading = false;
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
@@ -74,7 +76,8 @@ class _SignUpState extends State<SignUp> {
                       "Регистрация",
                       style: TextStyle(
                         color: Color.fromRGBO(22, 31, 10, 1),
-                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w500,
                         fontSize: 25,
                       ),
                     ),
@@ -101,6 +104,7 @@ class _SignUpState extends State<SignUp> {
                         ),
                         InkWell(
                           highlightColor: Colors.transparent,
+                          splashColor: Colors.transparent,
                           onTap: (){
                             selectImage();
                           },
@@ -133,7 +137,7 @@ class _SignUpState extends State<SignUp> {
                           ]
                       ),
                       child: Form(
-                        key: _formkey,
+                        key: _formkeyy,
                         child:  Column(
                           children: <Widget>[
                             Container(
@@ -148,7 +152,7 @@ class _SignUpState extends State<SignUp> {
                                 decoration: InputDecoration(
                                     border: InputBorder.none,
                                     hintText: "Email",
-                                    hintStyle: TextStyle(color: Colors.grey.shade700)
+                                    hintStyle: TextStyle(color: Colors.grey.shade700, fontFamily: 'Montserrat', fontWeight: FontWeight.w400,)
                                 ),
                                 validator: (value) {
                                   if (value!.length == 0) {
@@ -180,7 +184,7 @@ class _SignUpState extends State<SignUp> {
                                 decoration: InputDecoration(
                                   border: InputBorder.none,
                                   hintText: "Имя",
-                                  hintStyle: TextStyle(color: Colors.grey.shade700),
+                                  hintStyle: TextStyle(color: Colors.grey.shade700, fontFamily: 'Montserrat', fontWeight: FontWeight.w400,),
                                 ),
                                 validator: (value){
                                   if (value!.isEmpty) {
@@ -205,7 +209,7 @@ class _SignUpState extends State<SignUp> {
                                 decoration: InputDecoration(
                                   border: InputBorder.none,
                                   hintText: "Пароль",
-                                  hintStyle: TextStyle(color: Colors.grey.shade700),
+                                  hintStyle: TextStyle(color: Colors.grey.shade700, fontFamily: 'Montserrat', fontWeight: FontWeight.w400,),
                                 ),
                                 validator: (value) {
                                   RegExp regex = new RegExp(r'^.{6,}$');
@@ -231,7 +235,7 @@ class _SignUpState extends State<SignUp> {
                                 decoration: InputDecoration(
                                   border: InputBorder.none,
                                   hintText: "Повторите пароль",
-                                  hintStyle: TextStyle(color: Colors.grey.shade700),
+                                  hintStyle: TextStyle(color: Colors.grey.shade700, fontFamily: 'Montserrat', fontWeight: FontWeight.w400,),
                                 ),
                                 validator: (value) {
                                   if (value!.isEmpty) {
@@ -259,24 +263,31 @@ class _SignUpState extends State<SignUp> {
 
                     )),
                 SizedBox(height: 20,),
-                FadeInUp(duration: Duration(milliseconds: 1900), child: MaterialButton(
+                FadeInUp(duration: Duration(milliseconds: 1900),
+                    child: MaterialButton(
                   onPressed: () async {
-                    setState(() {
-                      visible = true;
-                    });
+                    if (_isLoading) {
+                      return;
+                    }else
                     signUp(
-                        emailController.text, passwordController.text, role, nameController.text, (_image ?? await getDefaultImage()) as Uint8List?);
-
-                  },
+                        emailController.text, passwordController.text, role, nameController.text, (_image?? await getDefaultImage()) as Uint8List?);
+                    },
                   color: Color.fromRGBO(15, 32, 26, 1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                   height: 50,
                   child: Center(
-                    child: Text("Регистрация", style: TextStyle(color: Colors.white),),
+                    child: Stack(
+                      children: [
+                        if (_isLoading) CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color.fromRGBO(172, 193, 91, 1)), )
+                        else Text("Регистрация", style: TextStyle(color: Colors.white, fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
+                      ],
+                    ),
                   ),
+
                 )),
+
                 SizedBox(height: 20,),
                 FadeInUp(duration: Duration(milliseconds: 2000),
                     child: Center(
@@ -289,13 +300,43 @@ class _SignUpState extends State<SignUp> {
                                 ),
                               );
                             },
-                            child: Text("Уже с нами? Войдите!", style: TextStyle(color: Color.fromRGBO(172, 193, 91, 1)),)))),
+                            child: Text("Уже с нами? Войдите!", style: TextStyle(color: Color.fromRGBO(172, 193, 91, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),)))),
               ],
             ),
           )
         ],
       ),
-    )]
+    ),
+          if (_showCloseButton)
+            Positioned(
+              top: 40, // Отступ от верхнего края
+              right: 10, // Отступ от правого края
+              child: IconButton(
+                icon: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white, // Цвет границы
+                      width: 2.0, // Толщина границы
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.close,
+                    color: Colors.white, // Цвет иконки
+                    size: 30.0, // Размер иконки
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => GuestPage(), // Замените AnotherPage на вашу страницу
+                    ),
+                  );
+                },
+              ),
+            ),
+        ]
 
 
       )
@@ -346,7 +387,6 @@ class _SignUpState extends State<SignUp> {
 
   Future<Uint8List?> getDefaultImage() async {
     try {
-      // Загрузка дефолтного изображения из активов
       ByteData data = await rootBundle.load('assets/images/profilo.jpg');
       Uint8List bytes = data.buffer.asUint8List();
 
@@ -374,14 +414,20 @@ class _SignUpState extends State<SignUp> {
   }
 
 
-  void signUp(String email, String password, String role, String name, Uint8List? file) async {
-    if (_formkey.currentState!.validate()) {
+  Future<void> signUp(String email, String password, String role, String name, Uint8List? file) async {
+    if (_formkeyy.currentState!.validate()) {
+      setState(() {
+        _isLoading = true; // Установите _isLoading в true перед началом загрузки
+      });
 
       bool isEmailUniqueResult = await isEmailUnique(email);
       if (!isEmailUniqueResult) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Email уже используется')),
         );
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -390,17 +436,26 @@ class _SignUpState extends State<SignUp> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Имя пользователя уже существует')),
         );
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
-      await _auth
-          .createUserWithEmailAndPassword(email: email, password: password)
-          .then((value) => {saveDate(email: email, role: role, name: name, file: file!)})
-          .catchError((e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка при регистрации: $e')),
-        );
-      });
+      try {
+        await _auth
+            .createUserWithEmailAndPassword(email: email, password: password)
+            .then((value) => {saveDate(email: email, role: role, name: name, file: file!)})
+            .catchError((e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка при регистрации: $e')),
+          );
+        });
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
