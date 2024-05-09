@@ -24,7 +24,10 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primaryColor: Colors.lightGreen,
+        primaryColor: Color.fromRGBO(172, 193, 91, 1),
+        textSelectionTheme: TextSelectionThemeData(
+          selectionColor: Color.fromRGBO(172, 193, 91, 1), // Задаем цвет выделения текста
+        ),
       ),
       home: SignIn(),
     );

@@ -3,6 +3,7 @@ import 'package:click/pages/roles/guest.dart';
 import 'package:click/pages/sign_up_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'forgot.dart';
 import 'roles/home.dart';
 
 class SignIn extends StatefulWidget {
@@ -13,21 +14,10 @@ class SignIn extends StatefulWidget {
 class _SignInState extends State<SignIn> {
   bool visible = false;
   bool _obscureText = true;
-  bool _showCloseButton = false;
   bool _isLoading = false;
   final _formkey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(Duration(seconds: 3), () {
-      setState(() {
-        _showCloseButton = true;
-      });
-    });
-  }
 
 
   @override
@@ -186,7 +176,20 @@ class _SignInState extends State<SignIn> {
                         ),
 
                       )),
-                      SizedBox(height: 20,),
+                      SizedBox(height: 8,),
+                      FadeInUp(duration: Duration(milliseconds: 2000),
+                          child: Center(
+                              child: TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ForgotPage(),
+                                      ),
+                                    );
+                                  },
+                                  child: Text("Забыли пароль?", style: TextStyle(color: Color.fromRGBO(172, 193, 91, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),)))),
+                      SizedBox(height: 8,),
                       FadeInUp(duration: Duration(milliseconds: 1900), child: MaterialButton(
                         onPressed: () async {
 
@@ -227,7 +230,7 @@ class _SignInState extends State<SignIn> {
                           ),
                         ),
                       )),
-                      SizedBox(height: 30,),
+                      SizedBox(height: 20,),
                       FadeInUp(duration: Duration(milliseconds: 2000),
                           child: Center(
                               child: TextButton(
@@ -239,7 +242,19 @@ class _SignInState extends State<SignIn> {
                                       ),
                                     );
                                   },
-                                  child: Text("Еще не с нами? Зарегестрируйтесь!", style: TextStyle(color: Color.fromRGBO(172, 193, 91, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),)))),
+                                  child: Text("Еще не с нами? Зарегистрируйтесь!", style: TextStyle(color: Color.fromRGBO(172, 193, 91, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),)))),
+                      FadeInUp(duration: Duration(milliseconds: 2000),
+                          child: Center(
+                              child: TextButton(
+                                  onPressed: () {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => GuestPage(),
+                                      ),
+                                    );
+                                  },
+                                  child: Text("Продолжить без входа", style: TextStyle(color: Color.fromRGBO(172, 193, 91, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),)))),
 
                     ],
                   ),
@@ -247,35 +262,6 @@ class _SignInState extends State<SignIn> {
               ],
             ),
           ),
-          if (_showCloseButton)
-            Positioned(
-              top: 40, // Отступ от верхнего края
-              right: 10, // Отступ от правого края
-              child: IconButton(
-                icon: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white, // Цвет границы
-                      width: 2.0, // Толщина границы
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.close,
-                    color: Colors.white, // Цвет иконки
-                    size: 30.0, // Размер иконки
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => GuestPage(), // Замените AnotherPage на вашу страницу
-                    ),
-                  );
-                },
-              ),
-            ),
 
         ],
       ),

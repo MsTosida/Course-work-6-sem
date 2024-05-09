@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../models/postModel.dart';
 import '../models/userModel.dart';
 
 class AdminPanel extends StatefulWidget {
@@ -15,6 +16,8 @@ class _AdminPanelState extends State<AdminPanel> {
   List<UserModel> filteredUsers = [];
   String filterRole = 'all';
   String searchText = '';
+  final uId = FirebaseAuth.instance.currentUser?.uid;
+  final DatabaseService _databaseService = DatabaseService();
 
   @override
   void initState() {
@@ -35,30 +38,45 @@ class _AdminPanelState extends State<AdminPanel> {
     });
   }
 
-  void _deleteUser(String userId) async {
-    await _firestore.collection("users").doc(userId).delete();
-    _fetchUsers();
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Успешно удалено"),
-          content: Text("Пользователь был успешно удален."),
-          actions: <Widget>[
-            TextButton(
-              child: Text("ОК"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void _changeRole(String userId, String newRole) async {
-    await _firestore.collection("users").doc(userId).update({"role": newRole});
+
+    if(userId == uId){
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text("Ошибка"),
+            content: Text("Нельзя изменять роль у самого себя."),
+            actions: <Widget>[
+              TextButton(
+                child: Text("ОК", style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1)),),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+    final userPostsSnapshot = await _firestore.collection("posts").where("uid", isEqualTo: userId).get();
+    if(newRole == 'adminRole' && userPostsSnapshot.docs.isNotEmpty){
+      await _firestore.collection("posts").where("uid", isEqualTo: userId).get().then((snapshot) {
+        snapshot.docs.forEach((doc) async {
+          _firestore.collection("posts").doc(doc.id).delete();
+        });
+      });
+
+      await _firestore.collection("favorites").where("uid", isEqualTo: userId).get().then((snapshot) {
+        snapshot.docs.forEach((doc) async {
+          _firestore.collection("favorites").doc(doc.id).delete();
+        });
+      });
+
+      await _firestore.collection("users").doc(userId).update({"role": newRole});
+    }else await _firestore.collection("users").doc(userId).update({"role": newRole});
+
     _fetchUsers();
     showDialog(
       context: context,
@@ -68,7 +86,7 @@ class _AdminPanelState extends State<AdminPanel> {
           content: Text("Роль пользователя была успешно изменена."),
           actions: <Widget>[
             TextButton(
-              child: Text("ОК"),
+              child: Text("ОК", style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1)),),
               onPressed: () {
                 Navigator.of(context).pop();
               },

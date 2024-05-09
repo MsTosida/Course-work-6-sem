@@ -27,7 +27,7 @@ class _AdminPageState extends State<AdminPage> {
     List<Widget> _widgetOptions = <Widget>[
       AllPostPage(),
       AdminPanel(),
-      Profile(id: widget.id),
+      Profile(),
     ];
 
     return Scaffold(

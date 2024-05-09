@@ -13,17 +13,16 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class AddPostPage extends StatefulWidget {
-  final String id;
-  AddPostPage({Key? key, required this.id}) : super(key: key);
+  AddPostPage({Key? key}) : super(key: key);
 
   @override
-  _AddPostPageState createState() => _AddPostPageState(id: id);
+  _AddPostPageState createState() => _AddPostPageState();
 }
 
 class _AddPostPageState extends State<AddPostPage> {
-  String id;
+  final id = FirebaseAuth.instance.currentUser?.uid;
   Uint8List? _image;
-  _AddPostPageState({required this.id});
+  _AddPostPageState();
   final _formkeey = GlobalKey<FormState>();
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _tagsController = TextEditingController();
@@ -185,7 +184,7 @@ class _AddPostPageState extends State<AddPostPage> {
                                   onSaved: (value) {
                                     _descController.text = value!;
                                   },
-                                  keyboardType: TextInputType.text, // Используйте TextInputType.text для английской клавиатуры
+                                  keyboardType: TextInputType.text,
                                   maxLength: 50,
                                 ),
                               ),
@@ -255,7 +254,7 @@ class _AddPostPageState extends State<AddPostPage> {
                             //           child: Text('OK', style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
                             //           onPressed: () {
                             //             Navigator.pushReplacement(
-                            //                 context, MaterialPageRoute(builder: (context) => UserPage(id: user!.uid, selectedIndex: 0)));
+                            //                 context, MaterialPageRoute(builder: (context) => UserPage(selectedIndex: 0)));
                             //           },
                             //         ),
                             //       ],

@@ -3,26 +3,27 @@ import 'package:click/pages/editProfile.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import '../models/userModel.dart';
+import 'favorites.dart';
 import 'sign_in_page.dart';
 
 
 class Profile extends StatefulWidget {
-  String id;
-  Profile({required this.id});
+  Profile();
   @override
-  _ProfileState createState() => _ProfileState(id: id);
+  _ProfileState createState() => _ProfileState();
 }
 
 class _ProfileState extends State<Profile>  {
-  String id;
+  final id = FirebaseAuth.instance.currentUser!.uid;
   var rooll;
   var emaill;
   var name;
   var image;
   UserModel loggedInUser = UserModel();
 
-  _ProfileState({required this.id});
+  _ProfileState();
 
   @override
   void initState() {
@@ -38,7 +39,6 @@ class _ProfileState extends State<Profile>  {
       setState(() {
         emaill = loggedInUser.email?.toString() ?? '';
         rooll = loggedInUser.role?.toString() ?? '';
-        id = loggedInUser.uid?.toString() ?? '';
         name = loggedInUser.name?.toString() ?? '';
         image = loggedInUser.imageUrl?.toString() ?? '';
       });
@@ -48,9 +48,46 @@ class _ProfileState extends State<Profile>  {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Padding(
+          padding: EdgeInsets.only(left: 8), // Устанавливаем отступ в 0// Смещаем содержимое влево на 10 пикселей
+          child: SvgPicture.asset(
+            'assets/images/logo.svg',
+            height: 20,
+          ),
+        ),
+        actions: [
+          IconButton(onPressed: (){
+            showDialog(
+            context: context,
+              builder: (BuildContext context) {
+              return AlertDialog(
+                title: Text('Выход из системы'),
+                content: Text('Вы уверены, что хотите выйти?'),
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text("Нет", style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1))),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      logout(context);
+                      Navigator.pop(context);
+                      },
+                    child: Text("Да", style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1))),
+                  ),
+                ],
+              );
+              },
+            );
+            },  icon: Icon(Icons.logout_outlined),)
+        ],
+      ),
       body: SingleChildScrollView(
         child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 80 , 20, 0),
+          padding: const EdgeInsets.all(20),
           child: Column(
             children: [
               Center(
@@ -97,50 +134,6 @@ class _ProfileState extends State<Profile>  {
                 child: Center(
                   child: Text("Редактировать", style: TextStyle(color: Colors.white, fontSize: 15,  fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
                 ),
-              ),
-              const SizedBox(height: 30),
-              if (rooll == 'userRole')
-                ProfileMenuWidget(
-                  title: "Избранное",
-                  icon: Icons.favorite,
-                  endIcon: false,
-                  onPress: () {
-                    // Ваш код здесь
-                  },
-                ),
-
-              const SizedBox(height: 10),
-              ProfileMenuWidget(
-                title: "Выход",
-                icon: Icons.logout_outlined,
-                endIcon: false,
-                onPress: (){
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: Text('Выход из системы'),
-                        content: Text('Вы уверены, что хотите выйти?'),
-                        actions: <Widget>[
-                          TextButton(
-                            onPressed: () {
-                              logout(context);
-                              Navigator.pop(context);
-                            },
-                            child: Text("Да", style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1))),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: Text("Нет", style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1))),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-
-                },
               ),
                 ],
           ),

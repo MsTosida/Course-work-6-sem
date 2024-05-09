@@ -67,7 +67,6 @@ class _controState extends State<contro> {
   routing() {
     if (rooll != null && rooll == 'userRole') {
       return UserPage(
-        id: id,
         selectedIndex: 0,
       );
     } else if (rooll != null && rooll == 'adminRole') {

@@ -25,6 +25,7 @@ class _UpdateProfileState extends State<UpdateProfile>  {
   String email;
   String name;
   String image;
+  bool _isLoading = false;
   _UpdateProfileState({required this.id, required this.email, required this.name, required this.image});
 
 
@@ -217,8 +218,12 @@ class _UpdateProfileState extends State<UpdateProfile>  {
                          MaterialButton(
                             onPressed: () async {
                               if (_formkeyyy.currentState!.validate()) {
+
+                                setState(() {
+                                  _isLoading = true;
+                                });
+
                                 _formkeyyy.currentState!.save();
-                                // Изменение пароля
                                 try {
                                   if(!passwordController.text.isEmpty  && !confirmPassController.text.isEmpty){
                                     await _auth.currentUser!.updatePassword(passwordController.text);
@@ -228,12 +233,8 @@ class _UpdateProfileState extends State<UpdateProfile>  {
                                   print("Ошибка при изменении пароля: $e");
                                 }
 
-                                // Изменение изображения профиля
-
                                 if (_image != null) {
                                   try {
-                                    // Загрузка изображения в Firebase Storage
-
                                     Reference ref = FirebaseStorage.instance.ref().child('profileImages/${_auth.currentUser!.uid}');
                                     UploadTask uploadTask = ref.putData(_image!);
                                     TaskSnapshot snapshot = await uploadTask;
@@ -259,8 +260,6 @@ class _UpdateProfileState extends State<UpdateProfile>  {
                                   print("Ошибка при обновлении имени пользователя: $e");
                                 }
 
-                                setState(() {});
-
                                 showDialog(
                                   context: context,
                                   builder: (BuildContext context) {
@@ -273,7 +272,7 @@ class _UpdateProfileState extends State<UpdateProfile>  {
                                           onPressed: () {
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
-                                                builder: (context) => UserPage(id: id, selectedIndex: 2,),
+                                                builder: (context) => UserPage(selectedIndex: 4,),
                                               ),
                                             );
                                           },
@@ -290,7 +289,12 @@ class _UpdateProfileState extends State<UpdateProfile>  {
                             ),
                             height: 50,
                             child: Center(
-                              child: Text("Сохранить", style: TextStyle(color: Colors.white, fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
+                              child: Stack(
+                                children: [
+                                  if (_isLoading) CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color.fromRGBO(172, 193, 91, 1)), )
+                                  else Text("Сохранить", style: TextStyle(color: Colors.white, fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
+                                ],
+                              ),
                             ),
                           ),
                           SizedBox(height: 20,),
@@ -328,37 +332,44 @@ class _UpdateProfileState extends State<UpdateProfile>  {
 
   void updateProfile(  String name, String password, Uint8List? file) async {
     if (_formkeyyy.currentState!.validate()) {
-      bool isUsernameUniqueResult = await isUsernameUnique(name);
-      if (!nameController.text.isEmpty  && !isUsernameUniqueResult) {
+      try{
+        bool isUsernameUniqueResult = await isUsernameUnique(name);
+        if (!nameController.text.isEmpty  && !isUsernameUniqueResult) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Имя пользователя уже существует')),
+          );
+          return;
+        }
+        Map<String, dynamic> updateData = {};
+
+        if (name != widget.name) {
+          updateData['name'] = name;
+        }
+
+        if (file != widget.image) {
+          String imageUrl = await uploadImageToStorage("profileImage?${DateTime.now().millisecondsSinceEpoch}", file!);
+          updateData['imageUrl'] = imageUrl;
+        }
+
+        await FirebaseFirestore.instance
+            .collection("users")
+            .doc(widget.id)
+            .update(updateData)
+            .then((value) {
+          Navigator.of(context).pop();
+        });
+
+      } on FirebaseAuthException catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Имя пользователя уже существует')),
+        SnackBar(content: Text('Ошибка при обновлении профиля: $e')),
         );
-        return;
-      }
-      Map<String, dynamic> updateData = {};
-
-      if (name != widget.name) {
-        updateData['name'] = name;
-      }
-
-      if (file != widget.image) {
-        String imageUrl = await uploadImageToStorage("profileImage?${DateTime.now().millisecondsSinceEpoch}", file!);
-        updateData['imageUrl'] = imageUrl;
+      }finally {
+        setState(() {
+          _isLoading = false;
+        });
       }
 
 
-      await FirebaseFirestore.instance
-          .collection("users")
-          .doc(widget.id)
-          .update(updateData)
-          .then((value) {
-        Navigator.of(context).pop();
-      })
-          .catchError((e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка при обновлении профиля: $e')),
-        );
-      });
     }
   }
 

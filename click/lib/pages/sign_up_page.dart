@@ -44,16 +44,6 @@ class _SignUpState extends State<SignUp> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    Future.delayed(Duration(seconds: 5), () {
-      setState(() {
-        _showCloseButton = true;
-      });
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
 
     return Scaffold(
@@ -64,14 +54,14 @@ class _SignUpState extends State<SignUp> {
             child:  Column(
               children: <Widget>[
                 Padding(
-            padding: EdgeInsets.fromLTRB(40, 100, 40, 100),
+                  padding: EdgeInsets.fromLTRB(40, 80, 40, 80),
                   child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                SizedBox(height: 20,),
-                FadeInUp(
-                  duration: Duration(milliseconds: 1500),
-                  child: Center(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      SizedBox(height: 20,),
+                      FadeInUp(
+                        duration: Duration(milliseconds: 1500),
+                        child: Center(
                     child: Text(
                       "Регистрация",
                       style: TextStyle(
@@ -301,41 +291,25 @@ class _SignUpState extends State<SignUp> {
                               );
                             },
                             child: Text("Уже с нами? Войдите!", style: TextStyle(color: Color.fromRGBO(172, 193, 91, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),)))),
+                FadeInUp(duration: Duration(milliseconds: 2000),
+                    child: Center(
+                        child: TextButton(
+                            onPressed: () {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => GuestPage(),
+                                ),
+                              );
+                            },
+                            child: Text("Продолжить без регистрации", style: TextStyle(color: Color.fromRGBO(172, 193, 91, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),)))),
               ],
             ),
           )
         ],
       ),
     ),
-          if (_showCloseButton)
-            Positioned(
-              top: 40, // Отступ от верхнего края
-              right: 10, // Отступ от правого края
-              child: IconButton(
-                icon: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white, // Цвет границы
-                      width: 2.0, // Толщина границы
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.close,
-                    color: Colors.white, // Цвет иконки
-                    size: 30.0, // Размер иконки
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => GuestPage(), // Замените AnotherPage на вашу страницу
-                    ),
-                  );
-                },
-              ),
-            ),
+
         ]
 
 
