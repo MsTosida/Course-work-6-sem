@@ -85,6 +85,10 @@ class DatabaseService{
     return _postRef.snapshots();
   }
 
+  Stream<QuerySnapshot> getPostsByTags(List<String> tags) {
+    return _postRef.where('tags', arrayContainsAny: tags).snapshots();
+  }
+
   void addPost(PostModel post) async{
     _postRef.add(post);
   }
@@ -115,14 +119,51 @@ class DatabaseService{
   }
 
 
-  void addPostFav(String postId) async{
-    FavModel post = FavModel(
-      uid: FirebaseAuth.instance.currentUser?.uid,
-      pid: postId,
-       );
+  // void addPostFav(String postId) async{
+  //   String? uid = FirebaseAuth.instance.currentUser?.uid;
+  //
+  //   QuerySnapshot querySnapshot = await _favRef
+  //       .where('uid', isEqualTo: uid)
+  //       .where('pid', isEqualTo: postId)
+  //       .get();
+  //
+  //   if (querySnapshot.docs.isNotEmpty) {
+  //
+  //     print('Пост уже существует в избранном');
+  //
+  //   } else {
+  //     FavModel post = FavModel(
+  //       uid: uid,
+  //       pid: postId,
+  //     );
+  //
+  //     _favRef.add(post);
+  //     print('Пост успешно добавлен в избранное');
+  //   }
+  // }
 
-    _favRef.add(post);
+  Future<bool> addPostFav(String postId) async {
+    String? uid = FirebaseAuth.instance.currentUser?.uid;
+
+    QuerySnapshot querySnapshot = await _favRef
+        .where('uid', isEqualTo: uid)
+        .where('pid', isEqualTo: postId)
+        .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      return false;
+    } else {
+      FavModel post = FavModel(
+        uid: uid,
+        pid: postId,
+      );
+
+      await _favRef.add(post);
+      return true;
+    }
   }
+
+
 
   Future<void> deletePostFav(String pid) async {
     final querySnapshot = await _favRef.where('pid', isEqualTo: pid).get();

@@ -1,3 +1,4 @@
+import 'package:click/pages/search.dart';
 import 'package:click/pages/sign_in_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +22,7 @@ class _GuestPageState extends State<GuestPage> {
       selectedIndex = index;
     });
 
-    if(selectedIndex>0){
+    if(selectedIndex>1){
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => SignIn(),
@@ -35,7 +36,7 @@ class _GuestPageState extends State<GuestPage> {
   Widget build(BuildContext context) {
     List<Widget> _widgetOptions = <Widget>[
       AllPostPage(),
-      SizedBox.shrink(),
+      SearchPage(),
       SizedBox.shrink(),
     ];
 
@@ -53,8 +54,8 @@ class _GuestPageState extends State<GuestPage> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle_rounded),
-            label: 'addPost',
+            icon: Icon(Icons.search),
+            label: 'search',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),

@@ -1,5 +1,6 @@
 import 'package:click/pages/allPosts.dart';
 import 'package:click/pages/profile.dart';
+import 'package:click/pages/search.dart';
 import 'package:flutter/material.dart';
 
 import '../adminPanel.dart';
@@ -26,6 +27,7 @@ class _AdminPageState extends State<AdminPage> {
   Widget build(BuildContext context) {
     List<Widget> _widgetOptions = <Widget>[
       AllPostPage(),
+      SearchPage(),
       AdminPanel(),
       Profile(),
     ];
@@ -33,6 +35,7 @@ class _AdminPageState extends State<AdminPage> {
     return Scaffold(
       body: _widgetOptions.elementAt(_selectedIndex),
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         showUnselectedLabels: false,
         showSelectedLabels: false,
         backgroundColor: Color.fromRGBO(15, 32, 26, 1),
@@ -40,6 +43,10 @@ class _AdminPageState extends State<AdminPage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: 'home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search),
+            label: 'search',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),

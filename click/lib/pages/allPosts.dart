@@ -1,12 +1,17 @@
+import 'dart:io';
 import 'package:click/models/postModel.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/userModel.dart';
+import '../widgets/showDialog.dart';
 import 'detail.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_gallery_saver/image_gallery_saver.dart';
 
 
 class AllPostPage extends StatefulWidget {
@@ -29,6 +34,8 @@ class _AllPostPageState extends State<AllPostPage> {
   late final  CollectionReference imgColRef;
   String searchText = '';
 
+
+
   @override
   void initState() {
     super.initState();
@@ -48,12 +55,107 @@ class _AllPostPageState extends State<AllPostPage> {
   }
 
 
+  Future<void> downloadAndSaveImage(String imageUrl) async {
+    final http.Response response = await http.get(Uri.parse(imageUrl));
+    if (response.statusCode == 200) {
+      final appDir = await getTemporaryDirectory();
+      final file = File('${appDir.path}/image.jpg');
+      await file.writeAsBytes(response.bodyBytes);
+
+      final result = await ImageGallerySaver.saveFile(file.path);
+      if (result['isSuccess']) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(
+                'Успешно',
+                style: TextStyle(
+                  color: Color.fromRGBO(22, 31, 10, 1),
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              content: Text(
+                'Изображение успешно сохранено',
+                style: TextStyle(
+                  color: Color.fromRGBO(22, 31, 10, 1),
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text(
+                    'OK',
+                    style: TextStyle(
+                      color: Color.fromRGBO(22, 31, 10, 1),
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            );
+          },
+        );
+        print('Изображение успешно сохранено в галерее');
+      } else {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(
+                'Ошибка',
+                style: TextStyle(
+                  color: Color.fromRGBO(22, 31, 10, 1),
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              content: Text(
+                'Ошибка при сохранении изображения: ${result['errorMessage']}',
+                style: TextStyle(
+                  color: Color.fromRGBO(22, 31, 10, 1),
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text(
+                    'OK',
+                    style: TextStyle(
+                      color: Color.fromRGBO(22, 31, 10, 1),
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            );
+          },
+        );
+        print('Ошибка при сохранении изображения: ${result['errorMessage']}');
+      }
+    } else {
+      print('Ошибка при скачивании изображения. Код статуса: ${response.statusCode}');
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
           title: Padding(
-            padding: EdgeInsets.only(left: 8), // Устанавливаем отступ в 0// Смещаем содержимое влево на 10 пикселей
+            padding: EdgeInsets.only(left: 8),
             child: SvgPicture.asset(
               'assets/images/logo.svg',
               height: 20,
@@ -119,36 +221,37 @@ class _AllPostPageState extends State<AllPostPage> {
                                   PopupMenuButton<String>(
                                     color: Colors.white,
                                     icon: Icon(Icons.more_horiz),
-                                    onSelected: (String result) {
+                                    onSelected: (String result) async {
                                       if (result == 'Delete') {
                                         _databaseService.deletePost(post.id);
                                       }
                                       if (result == 'Favorite') {
-                                        _databaseService.addPostFav(post.id);
-                                        showDialog(
+                                        bool addedToFavorites = await _databaseService.addPostFav(post.id);
+                                        if (addedToFavorites)
+                                          CustomAlertDialog.show(
+                                            context: context,
+                                            title: 'Успешно',
+                                            content: 'Пост был добавлен в избранное!',
+                                            buttonText: 'ОК',
+                                          );
+
+                                        else CustomAlertDialog.show(
                                           context: context,
-                                          builder: (BuildContext context) {
-                                            return AlertDialog(
-                                              title: Text("Успешно"),
-                                              content: Text("Пост был добавлен в избранное!"),
-                                              actions: <Widget>[
-                                                TextButton(
-                                                  child: Text("ОК", style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1)),),
-                                                  onPressed: () {
-                                                    Navigator.of(context).pop();
-                                                  },
-                                                ),
-                                              ],
-                                            );
-                                          },
+                                          title: 'Ошибка',
+                                          content: 'Пост уже в избранном!',
+                                          buttonText: 'ОК',
                                         );
+
+                                      }
+                                      if(result == 'Download'){
+                                        downloadAndSaveImage(post['imageUrl']);
                                       }
                                     },
                                     itemBuilder: (BuildContext context) {
                                       List<PopupMenuEntry<String>> menuItems = [];
 
                                         menuItems.add(const PopupMenuItem<String>(
-                                          value: 'download',
+                                          value: 'Download',
                                           child: Row(
                                             children: [
                                               Icon(Icons.download_outlined),

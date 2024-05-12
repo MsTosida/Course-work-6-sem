@@ -8,6 +8,12 @@ import 'package:flutter/widgets.dart';
 import '../models/userModel.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+
+import '../widgets/showDialog.dart';
 
 
 class DetailPage extends StatefulWidget {
@@ -311,29 +317,137 @@ class _DetailPageState extends State<DetailPage> {
 
   Future<void> deleteComment(String commentId) async {
     try {
-      await FirebaseFirestore.instance
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance
           .collection('posts')
           .doc(id)
-          .update({
-        'comments': FieldValue.arrayRemove([
-          {
-            'cid': commentId,
-          }
-        ])
-      });
-    } on FirebaseException {
+          .get();
+
+      if (snapshot.exists &&
+          snapshot.data() is Map<String, dynamic> &&
+          (snapshot.data() as Map<String, dynamic>).containsKey('comments')) {
+
+        Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+        List<dynamic> comments = data['comments'] ?? [];
+
+        comments.removeWhere((comment) => comment['cid'] == commentId);
+
+        await FirebaseFirestore.instance
+            .collection('posts')
+            .doc(id)
+            .update({
+          'comments': comments,
+        });
+
+        setState(() {});
+      } else {
+        print("Comment with ID $commentId not found.");
+      }
+    } on FirebaseException catch (e) {
+      print("Error deleting comment: ${e.message}");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error deleting comment'),
+        SnackBar(
+          content: Text('Error deleting comment: ${e.message}'),
         ),
       );
     }
   }
 
+  Future<void> downloadAndSaveImage(String imageUrl) async {
+    final http.Response response = await http.get(Uri.parse(imageUrl));
+    if (response.statusCode == 200) {
+      final appDir = await getTemporaryDirectory();
+      final file = File('${appDir.path}/image.jpg');
+      await file.writeAsBytes(response.bodyBytes);
+
+      final result = await ImageGallerySaver.saveFile(file.path);
+      if (result['isSuccess']) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(
+                'Успешно',
+                style: TextStyle(
+                  color: Color.fromRGBO(22, 31, 10, 1),
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              content: Text(
+                'Изображение успешно сохранено',
+                style: TextStyle(
+                  color: Color.fromRGBO(22, 31, 10, 1),
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text(
+                    'OK',
+                    style: TextStyle(
+                      color: Color.fromRGBO(22, 31, 10, 1),
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            );
+          },
+        );
+        print('Изображение успешно сохранено в галерее');
+      } else {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(
+                'Ошибка',
+                style: TextStyle(
+                  color: Color.fromRGBO(22, 31, 10, 1),
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              content: Text(
+                'Ошибка при сохранении изображения: ${result['errorMessage']}',
+                style: TextStyle(
+                  color: Color.fromRGBO(22, 31, 10, 1),
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text(
+                    'OK',
+                    style: TextStyle(
+                      color: Color.fromRGBO(22, 31, 10, 1),
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            );
+          },
+        );
+        print('Ошибка при сохранении изображения: ${result['errorMessage']}');
+      }
+    } else {
+      print('Ошибка при скачивании изображения. Код статуса: ${response.statusCode}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-
-    
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -358,7 +472,7 @@ class _DetailPageState extends State<DetailPage> {
             child: PopupMenuButton<String>(
               color: Colors.white,
               icon: Icon(Icons.more_vert),
-              onSelected: (String result) {
+              onSelected: (String result) async {
                 if (result == 'Delete') {
                   _databaseService.deletePost(id);
                   Navigator.pushReplacement(
@@ -371,27 +485,26 @@ class _DetailPageState extends State<DetailPage> {
                   _editPost(context);
                 }
 
+                if(result == 'Download'){
+                  downloadAndSaveImage(imageUrlForPost);
+                }
+
                 if (result == 'Favorite') {
-                  _databaseService.addPostFav(id);
-                  showDialog(
+
+                  bool addedToFavorites = await _databaseService.addPostFav(id);
+                  if (addedToFavorites)
+                  CustomAlertDialog.show(
                     context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: Text("Успешно", style: TextStyle(fontFamily: 'Montserrat',
-                          fontWeight: FontWeight.w500,),),
-                        content: Text("Пост был добавлен в избранное!", style: TextStyle(fontFamily: 'Montserrat',
-                          fontWeight: FontWeight.w500,),),
-                        actions: <Widget>[
-                          TextButton(
-                            child: Text("ОК", style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1),fontFamily: 'Montserrat',
-                              fontWeight: FontWeight.w500,),),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                          ),
-                        ],
-                      );
-                    },
+                    title: 'Успешно',
+                    content: 'Пост был добавлен в избранное!',
+                    buttonText: 'ОК',
+                  );
+
+                  else CustomAlertDialog.show(
+                    context: context,
+                    title: 'Ошибка',
+                    content: 'Пост уже в избранном!',
+                    buttonText: 'ОК',
                   );
                 }
               },
@@ -405,6 +518,18 @@ class _DetailPageState extends State<DetailPage> {
                         Icon(Icons.edit),
                         SizedBox(width: 10,),
                         Text("Редактировать")
+                      ],
+                    ),
+                  ));
+                }
+                if (role!= null && role == 'userRole' && role != 'adminRole') {
+                  menuItems.add(const PopupMenuItem<String>(
+                    value: 'Download',
+                    child: Row(
+                      children: [
+                        Icon(Icons.file_download_outlined),
+                        SizedBox(width: 10,),
+                        Text("Скачать")
                       ],
                     ),
                   ));
@@ -433,18 +558,7 @@ class _DetailPageState extends State<DetailPage> {
                     ),
                   ));
                 }
-                if (role!= null && role == 'userRole' && role != 'adminRole') {
-                  menuItems.add(const PopupMenuItem<String>(
-                    value: 'Download',
-                    child: Row(
-                      children: [
-                        Icon(Icons.file_download_outlined),
-                        SizedBox(width: 10,),
-                        Text("Удалить")
-                      ],
-                    ),
-                  ));
-                }
+
                 return menuItems;
               },
             ),
@@ -453,7 +567,7 @@ class _DetailPageState extends State<DetailPage> {
             visible: userId == null,
             child: IconButton(
               onPressed: () {
-
+                downloadAndSaveImage(imageUrlForPost);
               },
               icon: Icon(Icons.file_download_outlined),
             ),
@@ -614,61 +728,6 @@ class _DetailPageState extends State<DetailPage> {
                   ],
                 ),
 
-                // StreamBuilder(
-                //   stream: commentReference,
-                //   builder: (BuildContext context, AsyncSnapshot snapshot) {
-                //     if (snapshot.hasError) {
-                //       const Center(
-                //         child: Text('There was an error fetching comments'),
-                //       );
-                //     }
-                //     return Column(
-                //       children: List.generate(
-                //         snapshot.data.data()['comments'].length,
-                //             (index) {
-                //           final comment = snapshot.data
-                //               .data()['comments']
-                //               .reversed
-                //               .toList()[index];
-                //           DateTime time = comment['time'].toDate();
-                //           return Padding(
-                //             padding: const EdgeInsets.only(bottom: 8),
-                //             child: Column(
-                //               crossAxisAlignment: CrossAxisAlignment.start,
-                //               children: [
-                //                 Row(
-                //                   children: [
-                //                     const Padding(
-                //                       padding: EdgeInsets.only(right: 5),
-                //                       child: Icon(
-                //                         Icons.add,
-                //                         color: Colors.black54,
-                //                       ),
-                //                     ),
-                //                     Text(
-                //                       DateFormat('dd.MM.yyyy').format(time),
-                //                       style: TextStyle(color: Colors.grey),
-                //                     ),
-                //                   ],
-                //                 ),
-                //                 Padding(
-                //                   padding: const EdgeInsets.symmetric(vertical: 8),
-                //                   child: Text(
-                //                     comment['text'],
-                //                     style: const TextStyle(
-                //                       fontSize: 18,
-                //                     ),
-                //                     maxLines: 6,
-                //                   ),
-                //                 ),
-                //               ],
-                //             ),
-                //           );
-                //         },
-                //       ),
-                //     );
-                //   },
-                // ),
                 StreamBuilder(
                   stream: FirebaseFirestore.instance
                       .collection('posts')
@@ -772,11 +831,12 @@ class _DetailPageState extends State<DetailPage> {
                                                 icon: const Icon(Icons.delete_outline),
                                                 onPressed: () async {
                                                   try {
-                                                    await deleteComment(comment['cid']); // Используйте await для ожидания завершения операции
+                                                    await deleteComment(comment['cid']);
                                                   } catch (e) {
+                                                    print(e);
                                                     ScaffoldMessenger.of(context).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text('Error deleting comment'),
+                                                      SnackBar(
+                                                        content: Text('$e'),
                                                       ),
                                                     );
                                                   }
@@ -835,6 +895,7 @@ class _DetailPageState extends State<DetailPage> {
                   keyboardType: TextInputType.multiline,
                   maxLines: 5,
                   minLines: 1,
+
                   style: const TextStyle(
                     fontSize: 17,
                   ),
@@ -878,6 +939,7 @@ class _DetailPageState extends State<DetailPage> {
                     border: const UnderlineInputBorder(),
 
                   ),
+                  maxLength: 100,
                 ),
               ),
             ),

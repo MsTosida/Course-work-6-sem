@@ -1,11 +1,9 @@
-import 'package:click/widgets/profileMenu.dart';
 import 'package:click/pages/editProfile.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import '../models/userModel.dart';
-import 'favorites.dart';
 import 'sign_in_page.dart';
 
 
@@ -50,7 +48,7 @@ class _ProfileState extends State<Profile>  {
     return Scaffold(
       appBar: AppBar(
         title: Padding(
-          padding: EdgeInsets.only(left: 8), // Устанавливаем отступ в 0// Смещаем содержимое влево на 10 пикселей
+          padding: EdgeInsets.only(left: 8),
           child: SvgPicture.asset(
             'assets/images/logo.svg',
             height: 20,
@@ -120,9 +118,10 @@ class _ProfileState extends State<Profile>  {
               /// -- BUTTON
               MaterialButton(
                 onPressed: () {
-                  Navigator.of(context).push(
+                  Navigator.push(
+                    context,
                     MaterialPageRoute(
-                      builder: (context) => UpdateProfile(id: id, email: emaill, name: name, image: image),
+                      builder: (context) => UpdateProfile(id: id, email: emaill, name: name, image: image)
                     ),
                   );
                 },

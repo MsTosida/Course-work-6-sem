@@ -29,9 +29,12 @@ class _FavoritesPageState extends State<FavoritesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: SizedBox.shrink(),
-        title: Text("Избранное", style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
-      ),
+        title: Padding(
+          padding: EdgeInsets.only(left: 8), // Устанавливаем отступ в 0// Смещаем содержимое влево на 10 пикселей
+          child: Text("Избранное", style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
+          ),
+        ),
+
       body: StreamBuilder<QuerySnapshot>(
         stream: _databaseService.getPostsFav(),
         builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {

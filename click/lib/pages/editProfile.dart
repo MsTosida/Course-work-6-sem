@@ -270,10 +270,11 @@ class _UpdateProfileState extends State<UpdateProfile>  {
                                         TextButton(
                                           child: Text("ОК", style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,)),
                                           onPressed: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (context) => UserPage(selectedIndex: 4,),
-                                              ),
+                                            Navigator.of(context).pop();
+                                            Navigator.pushAndRemoveUntil(
+                                              context,
+                                              MaterialPageRoute(builder: (context) =>UserPage(selectedIndex: 4,)),
+                                                  (Route<dynamic> route) => false,
                                             );
                                           },
                                         ),

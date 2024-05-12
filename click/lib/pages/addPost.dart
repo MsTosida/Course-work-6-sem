@@ -1,14 +1,8 @@
-import 'dart:io';
-import 'dart:typed_data';
+import 'dart:io' as io;
 import 'package:click/models/postModel.dart';
-import 'package:click/pages/roles/home.dart';
 import 'package:click/pages/roles/user.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/services.dart' show rootBundle;
-import '../widgets/utils.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -20,25 +14,21 @@ class AddPostPage extends StatefulWidget {
 }
 
 class _AddPostPageState extends State<AddPostPage> {
-  final id = FirebaseAuth.instance.currentUser?.uid;
-  Uint8List? _image;
   _AddPostPageState();
   final _formkeey = GlobalKey<FormState>();
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _tagsController = TextEditingController();
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final _auth = FirebaseAuth.instance;
   final DatabaseService _databaseService = DatabaseService();
   bool _isLoading = false;
   bool _isImageSelected = false;
   final FocusNode _focusNode = FocusNode();
-
   List<String> tags = [];
 
   @override
   void initState() {
     super.initState();
-    selectImage();
+    selectFile();
     _focusNode.addListener(_handleFocusChange);
   }
 
@@ -50,16 +40,30 @@ class _AddPostPageState extends State<AddPostPage> {
     }
   }
 
+  PlatformFile? pickedFile;
+  Future selectFile() async{
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png'],);
+    if(result == null) return;
 
-  void selectImage() async {
-    Uint8List? img = await pickImage(ImageSource.gallery);
-    if (img!= null) {
-      setState(() {
-        _image = img;
-        _isImageSelected = true;
-      });
-    }
+    setState(() {
+      pickedFile= result.files.first;
+      _isImageSelected = true;
+    });
   }
+
+  Future<String> uploadFile() async{
+    final path = 'post/${pickedFile!.name}';
+    final file = io.File(pickedFile!.path!);
+
+    final ref = FirebaseStorage.instance.ref().child(path);
+    UploadTask uploadTask = ref.putFile(file);
+    TaskSnapshot snapshot = await uploadTask;
+    String downloadUrl = await snapshot.ref.getDownloadURL();
+    return downloadUrl;
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -81,9 +85,9 @@ class _AddPostPageState extends State<AddPostPage> {
                           InkWell(
                             highlightColor: Colors.transparent,
                             onTap: (){
-                              selectImage();
+                              selectFile();
                             },
-                            child: _image != null ?
+                            child: pickedFile != null ?
                             Container(
                               padding: EdgeInsets.all(5),
                               decoration: BoxDecoration(
@@ -97,10 +101,12 @@ class _AddPostPageState extends State<AddPostPage> {
                               width: 400,
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
-                                child: Image.memory(
-                                  _image!,
+                                child: Image.file(
+                                  io.File(pickedFile!.path!),
+                                  width: double.infinity,
                                   fit: BoxFit.cover,
                                 ),
+
                               ),
                             ):
                             Container(
@@ -242,25 +248,7 @@ class _AddPostPageState extends State<AddPostPage> {
                             });
 
                             User? user = _auth.currentUser;
-                            addPost(user!.uid, _descController.text, _image!, _tagsController.text);
-                            // showDialog(
-                            //   context: context,
-                            //   builder: (BuildContext context) {
-                            //     return AlertDialog(
-                            //       title: Text('Успешно', style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
-                            //       content: Text('Пост добавлен', style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w400,),),
-                            //       actions: <Widget>[
-                            //         TextButton(
-                            //           child: Text('OK', style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
-                            //           onPressed: () {
-                            //             Navigator.pushReplacement(
-                            //                 context, MaterialPageRoute(builder: (context) => UserPage(selectedIndex: 0)));
-                            //           },
-                            //         ),
-                            //       ],
-                            //     );
-                            //   },
-                            // );
+                            addPost(user!.uid, _descController.text, _tagsController.text);
 
                           } else if (!_isImageSelected) {
                             showDialog(
@@ -315,17 +303,14 @@ class _AddPostPageState extends State<AddPostPage> {
     super.dispose();
   }
 
-  Future<void> addPost(String uid, String desc,  Uint8List? image ,String tagText) async{
+  Future<void> addPost(String uid, String desc, String tagText) async{
     if (_formkeey.currentState!.validate()) {
       try {
         List<String> tagList = _tagsController.text.split(' ')
             .where((tag) => tag.startsWith('#'))
             .toList();
 
-        String imageUrl = await uploadImageToStorage(
-            "postImage?${DateTime
-                .now()
-                .millisecondsSinceEpoch}", image!);
+        String imageUrl = await uploadFile();
 
         PostModel post = PostModel(uid: uid,
             desc: desc,
@@ -334,13 +319,30 @@ class _AddPostPageState extends State<AddPostPage> {
 
         _databaseService.addPost(post);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Пост добавлен')),
-        );
       } finally {
+
         setState(() {
           _isLoading = false;
         });
+
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Успешно', style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
+              content: Text('Пост добавлен', style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w400,),),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('OK', style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                        context, MaterialPageRoute(builder: (context) => UserPage(selectedIndex: 0)));
+                  },
+                ),
+              ],
+            );
+          },
+        );
       }
   }else {
       setState(() {
@@ -349,12 +351,5 @@ class _AddPostPageState extends State<AddPostPage> {
     }
   }
 
-  Future<String> uploadImageToStorage(String childName, Uint8List file) async {
-    Reference ref = _storage.ref().child(childName);
-    UploadTask uploadTask = ref.putData(file);
-    TaskSnapshot snapshot = await uploadTask;
-    String downloadUrl = await snapshot.ref.getDownloadURL();
-    return downloadUrl;
-  }
 
 }

@@ -334,7 +334,7 @@ class _SignUpState extends State<SignUp> {
   }) async{
     String resp = "Some error";
     try{
-      String imageUrl = await uploadImageToStorage("profileImage?${DateTime.now().millisecondsSinceEpoch}", file);
+      String imageUrl = await uploadImageToStorage("profileImage/profileImage?${DateTime.now().millisecondsSinceEpoch}", file);
 
       FirebaseFirestore firebaseFirestore = FirebaseFirestore.instance;
       User? user = _auth.currentUser;

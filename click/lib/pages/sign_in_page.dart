@@ -213,6 +213,10 @@ class _SignInState extends State<SignIn> {
                                   builder: (context) => HomePage(),
                                 ),
                               );
+                            }else{
+                              setState(() {
+                                _isLoading = false;
+                              });
                             }
 
                         },
@@ -300,25 +304,38 @@ class _SignInState extends State<SignIn> {
   Future<String> signIn(String email, String password) async {
     if (_formkey.currentState!.validate()) {
       try {
-        UserCredential userCredential =
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
+        UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
         return 'Добро пожаловать!';
-      } on FirebaseAuthException catch (e) {
-        if (e.code == 'user-not-found') {
-          return 'Юзера с таким email нет';
-        } else if (e.code == 'wrong-password') {
-          return 'Неверный пароль';
+      } catch (e) {
+        // Обработка исключений
+        if (e is FirebaseAuthException) {
+          // Проверяем, является ли исключение ошибкой аутентификации
+          if (e.code == 'user-not-found') {
+            return 'Юзера с таким email нет';
+          } else if (e.code == 'wrong-password') {
+            return 'Неверный пароль';
+          } else {
+            return 'Неверно введены данные';
+          }
+        } else {
+          return 'Произошла ошибка при входе в систему';
         }
-      }finally {
+      } finally {
         setState(() {
           _isLoading = false;
         });
       }
+    } else {
+      setState(() {
+        _isLoading = false;
+      });
+      return 'Некорректные данные';
     }
-    return 'Неверные данные'; // Добавлено возвращение сообщения об ошибке
   }
+
+
 
 }
