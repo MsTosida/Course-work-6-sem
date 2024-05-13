@@ -139,12 +139,11 @@ class _DetailPageState extends State<DetailPage> {
 
     if (postSnapshot.exists && userSnapshot.exists) {
       List<dynamic> likes = postSnapshot['likes'];
-      List<dynamic>? tags = postSnapshot['tags'];
       String? imageUrlForUser = userSnapshot['imageUrl'];
       String? nameForUser = userSnapshot['name'];
       String? desc = postSnapshot['desc'];
-      List<String>? tagsList = tags?.cast<String>();
-      return {'likes': likes, 'desc': desc, 'tags': tagsList, 'imageUrl': imageUrlForUser, 'name': nameForUser};
+      String? tags = postSnapshot['tags'];
+      return {'likes': likes, 'desc': desc, 'tags': tags, 'imageUrl': imageUrlForUser, 'name': nameForUser};
     } else {
       return null;
     }
@@ -152,7 +151,7 @@ class _DetailPageState extends State<DetailPage> {
 
   Future<void> _editPost(BuildContext context) async {
     final TextEditingController descController = TextEditingController(text: post.desc);
-    final TextEditingController tagsController = TextEditingController(text: post.tags?.join(', ')?? '');
+    final TextEditingController tagsController = TextEditingController(text: post.tags ?? '');
 
     await showDialog(
       context: context,
@@ -253,7 +252,7 @@ class _DetailPageState extends State<DetailPage> {
               child: Text('Сохранить', style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,)),
               onPressed: () {
                 if (_formkeeey.currentState!.validate()) {
-                  _updatePost(descController.text, tagsController.text.split(' ').toList());
+                  _updatePost(descController.text, tagsController.text);
                   Navigator.of(context).pop();
                 }
               },
@@ -265,7 +264,7 @@ class _DetailPageState extends State<DetailPage> {
 
   }
 
-  Future<void> _updatePost(String newDesc, List<String> newTags) async {
+  Future<void> _updatePost(String newDesc, String newTags) async {
       try {
         await _databaseService.updatePost(id, {
           'desc': newDesc,
@@ -577,7 +576,7 @@ class _DetailPageState extends State<DetailPage> {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 150),
           child: Column(
             children: [
               ClipRRect(
@@ -601,7 +600,7 @@ class _DetailPageState extends State<DetailPage> {
                       String? name = snapshot.data?['name'];
                       List likes = snapshot.data?['likes'];
                       String? desc = snapshot.data?['desc'];
-                      List<String>? tags = snapshot.data?['tags'];
+                      String? tags = snapshot.data?['tags'];
                       return Column(
                         children: [
                           Row(
@@ -690,13 +689,16 @@ class _DetailPageState extends State<DetailPage> {
                           ),
                           SizedBox(height: 10,),
                           Row(
-                            children: tags?.map((tag) => Text(tag, style: TextStyle(
+                            children:
+                            [Text(tags ?? 'tags', style: TextStyle(
                               color: Color.fromRGBO(22, 31, 10, 1),
                               fontFamily: 'Montserrat',
                               fontWeight: FontWeight.w400,
                               fontSize: 15,
-                            ),)).toList()?? [],
+                            ),
                           ),
+                    ]
+                    )
                         ],
                       );
                     } else {
@@ -728,6 +730,7 @@ class _DetailPageState extends State<DetailPage> {
                   ],
                 ),
 
+
                 StreamBuilder(
                   stream: FirebaseFirestore.instance
                       .collection('posts')
@@ -751,10 +754,24 @@ class _DetailPageState extends State<DetailPage> {
                     }
 
                     final comments = post['comments'];
+                    bool hasComments = comments.isNotEmpty;
 
                     return Column(
-                      children: List.generate(
-
+                      children: [
+                        if (!hasComments)
+                          Container(
+                            padding: EdgeInsets.only(top: 30),
+                            child: Text(
+                              'Будьте первым!',
+                              style: TextStyle(
+                                color: Color.fromRGBO(22, 31, 10, 1),
+                                fontFamily: 'Montserrat',
+                                fontWeight: FontWeight.w400,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                      ...List.generate(
                         comments.length,
                             (index) {
                           final comment = comments[index];
@@ -875,7 +892,7 @@ class _DetailPageState extends State<DetailPage> {
                           );
                         },
                       ),
-                    );
+                    ]);
                   },
                 ),
               ],

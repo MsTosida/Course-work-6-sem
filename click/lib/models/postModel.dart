@@ -5,12 +5,12 @@ class PostModel{
   String? uid;
   String? desc;
   String? imageUrl;
-  List<String>? tags;
+  //List<String>? tags;
+  String? tags;
   List likes = [];
   final time = Timestamp.now().toDate();
   List comments = [];
 
-  // receiving data
   PostModel({ this.uid, this.desc,  this.imageUrl,  this.tags, likes, time, comments});
 
   factory PostModel.fromMap(map) {
@@ -18,7 +18,8 @@ class PostModel{
       uid: map['uid'],
       desc: map['desc'],
       imageUrl: map['imageUrl'],
-      tags: List<String>.from(map['tags']),
+      //tags: List<String>.from(map['tags']),
+      tags: map['tags'],
       likes: map['likes'],
       time: map['time'].toDate(),
       comments: List.from(map['comments']),
@@ -85,13 +86,14 @@ class DatabaseService{
     return _postRef.snapshots();
   }
 
-  Stream<QuerySnapshot> getPostsByTags(List<String> tags) {
-    return _postRef.where('tags', arrayContainsAny: tags).snapshots();
-  }
-
   void addPost(PostModel post) async{
     _postRef.add(post);
   }
+
+  Stream<QuerySnapshot> getPostsByTag(String tag) {
+    return _postRef.where('tags', arrayContainsAny: [tag]).snapshots();
+  }
+
 
   Future<void> updatePost(String postId, Map<String, dynamic> updates) async {
     await _postRef.doc(postId).update(updates);
@@ -117,30 +119,6 @@ class DatabaseService{
     final favPostIds = await getFavPostIds();
     yield* _postRef.where(FieldPath.documentId, whereIn: favPostIds).snapshots();
   }
-
-
-  // void addPostFav(String postId) async{
-  //   String? uid = FirebaseAuth.instance.currentUser?.uid;
-  //
-  //   QuerySnapshot querySnapshot = await _favRef
-  //       .where('uid', isEqualTo: uid)
-  //       .where('pid', isEqualTo: postId)
-  //       .get();
-  //
-  //   if (querySnapshot.docs.isNotEmpty) {
-  //
-  //     print('Пост уже существует в избранном');
-  //
-  //   } else {
-  //     FavModel post = FavModel(
-  //       uid: uid,
-  //       pid: postId,
-  //     );
-  //
-  //     _favRef.add(post);
-  //     print('Пост успешно добавлен в избранное');
-  //   }
-  // }
 
   Future<bool> addPostFav(String postId) async {
     String? uid = FirebaseAuth.instance.currentUser?.uid;

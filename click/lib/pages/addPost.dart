@@ -315,7 +315,8 @@ class _AddPostPageState extends State<AddPostPage> {
         PostModel post = PostModel(uid: uid,
             desc: desc,
             imageUrl: imageUrl,
-            tags: tagList);
+            tags: tagText
+        );
 
         _databaseService.addPost(post);
 

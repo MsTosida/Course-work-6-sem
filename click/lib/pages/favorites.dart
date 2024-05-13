@@ -3,10 +3,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../models/userModel.dart';
 import 'detail.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 
 class FavoritesPage extends StatefulWidget {
@@ -22,8 +26,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
   final DatabaseService _databaseService = DatabaseService();
   late final  CollectionReference imgColRef;
-  String searchText = '';
-
+  List<String> searchWords = [];
 
   @override
   Widget build(BuildContext context) {
@@ -54,35 +57,51 @@ class _FavoritesPageState extends State<FavoritesPage> {
               ),
             );
           }
+
+          List<DocumentSnapshot> filteredPosts = [];
+          for (var post in snapshot.data!.docs) {
+            bool isMatch = true;
+            for (var word in searchWords) {
+              if (!post['tags'].toLowerCase().contains(word.toLowerCase())) {
+                isMatch = false;
+                break;
+              }
+            }
+            if (isMatch) {
+              filteredPosts.add(post);
+            }
+          }
+
+          if (filteredPosts.isEmpty) {
+            return Center(child: Text("Ничего не найдено", style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),));
+          }
+
           return Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: CupertinoSearchTextField(
-                        onChanged: (value) {
-                          setState(() {
-                            searchText = value;
-                          });
-                        },
-                        placeholder: 'Поиск',
-                      ),
+                Container(
+                  padding: EdgeInsets.only(bottom: 20),
+                  child:
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CupertinoSearchTextField(
+                            onChanged: (value) {
+                              setState(() {
+                                searchWords = value.split(' ');
+                              });
+                            },
+                            placeholder: 'Поиск',
+                          ),
+                        ),
+                      ],
                     ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: Icon(CupertinoIcons.search, color: Color.fromRGBO(22, 31, 10, 1),),
-                      onPressed: () {
-
-                      },
-                    ),
-                  ],
                 ),
                 Expanded(child:  StaggeredGridView.countBuilder(
                   crossAxisCount: 4,
-                  itemCount: snapshot.data!.docs.length,
+                  itemCount: filteredPosts.length,
                   itemBuilder: (BuildContext context, int index) {
-                    DocumentSnapshot post = snapshot.data!.docs[index];
+                    DocumentSnapshot post = filteredPosts[index];
                     return Card(
                       color: Colors.grey.shade100,
                       elevation: 0,
@@ -156,9 +175,24 @@ class _FavoritesPageState extends State<FavoritesPage> {
                                           },
                                         );
                                       }
+
+                                      if(result == 'Download'){
+                                        downloadAndSaveImage(post['imageUrl']);
+                                      }
                                     },
                                     itemBuilder: (BuildContext context) {
                                       List<PopupMenuEntry<String>> menuItems = [];
+
+                                      menuItems.add(const PopupMenuItem<String>(
+                                        value: 'Download',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.download_outlined),
+                                            SizedBox(width: 10,),
+                                            Text("Скачать")
+                                          ],
+                                        ),
+                                      ));
 
                                       menuItems.add(const PopupMenuItem<String>(
                                         value: 'FavoriteDelete',
@@ -203,5 +237,99 @@ class _FavoritesPageState extends State<FavoritesPage> {
         },
       ),
     );
+  }
+
+  Future<void> downloadAndSaveImage(String imageUrl) async {
+    final http.Response response = await http.get(Uri.parse(imageUrl));
+    if (response.statusCode == 200) {
+      final appDir = await getTemporaryDirectory();
+      final file = File('${appDir.path}/image.jpg');
+      await file.writeAsBytes(response.bodyBytes);
+
+      final result = await ImageGallerySaver.saveFile(file.path);
+      if (result['isSuccess']) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(
+                'Успешно',
+                style: TextStyle(
+                  color: Color.fromRGBO(22, 31, 10, 1),
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              content: Text(
+                'Изображение успешно сохранено',
+                style: TextStyle(
+                  color: Color.fromRGBO(22, 31, 10, 1),
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text(
+                    'OK',
+                    style: TextStyle(
+                      color: Color.fromRGBO(22, 31, 10, 1),
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            );
+          },
+        );
+        print('Изображение успешно сохранено в галерее');
+      } else {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(
+                'Ошибка',
+                style: TextStyle(
+                  color: Color.fromRGBO(22, 31, 10, 1),
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              content: Text(
+                'Ошибка при сохранении изображения: ${result['errorMessage']}',
+                style: TextStyle(
+                  color: Color.fromRGBO(22, 31, 10, 1),
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text(
+                    'OK',
+                    style: TextStyle(
+                      color: Color.fromRGBO(22, 31, 10, 1),
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            );
+          },
+        );
+        print('Ошибка при сохранении изображения: ${result['errorMessage']}');
+      }
+    } else {
+      print('Ошибка при скачивании изображения. Код статуса: ${response.statusCode}');
+    }
   }
 }
