@@ -143,12 +143,13 @@ class DatabaseService{
 
 
 
-  Future<void> deletePostFav(String pid) async {
+  void deletePostFav(String pid) async {
     final querySnapshot = await _favRef.where('pid', isEqualTo: pid).get();
     for (var doc in querySnapshot.docs) {
       await doc.reference.delete();
     }
-  }
 
+    _favRef.snapshots().listen((_) {});
+  }
 
 }

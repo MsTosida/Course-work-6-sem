@@ -51,6 +51,7 @@ class _AllPostPageState extends State<AllPostPage> {
           role = loggedInUser.role.toString();
         });
       });
+
     }
   }
 
@@ -162,158 +163,160 @@ class _AllPostPageState extends State<AllPostPage> {
             ),
           ),
         ),
-        body:  StreamBuilder<QuerySnapshot>(
-        stream: _databaseService.getPosts(),
-        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
-          if (snapshot.hasError) {
-            return Text('Ошибка!');
-          }
+        body:
+            StreamBuilder<QuerySnapshot>(
+            stream: _databaseService.getPosts(),
+            builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+              if (snapshot.hasError) {
+                return Text('Ошибка!');
+              }
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return CircularProgressIndicator();
-          }
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return CircularProgressIndicator();
+              }
 
-          if (snapshot.data!.docs.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.all(20),
-              child: Center(
-                child: Text("Постов пока нет"),
-              ),
-            );
-          }
-          return Padding(padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Expanded(child:  StaggeredGridView.countBuilder(
-                  crossAxisCount: 4,
-                  itemCount: snapshot.data!.docs.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    DocumentSnapshot post = snapshot.data!.docs[index];
-                    return Card(
-                      color: Colors.grey.shade100,
-                      elevation: 0,
-                      child: Padding(
-                        padding: const EdgeInsets.all(5),
-                        child: Column(
-                          children: [
-                            InkWell(
-                              onTap: (){
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => DetailPage(id: post.id),
+              if (snapshot.data!.docs.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Center(
+                    child: Text("Постов пока нет"),
+                  ),
+                );
+              }
+              return Padding(padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Expanded(child:  StaggeredGridView.countBuilder(
+                      crossAxisCount: 4,
+                      itemCount: snapshot.data!.docs.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        DocumentSnapshot post = snapshot.data!.docs[index];
+                        return Card(
+                          color: Colors.grey.shade100,
+                          elevation: 0,
+                          child: Padding(
+                            padding: const EdgeInsets.all(5),
+                            child: Column(
+                              children: [
+                                InkWell(
+                                  onTap: (){
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => DetailPage(id: post.id, image: post['imageUrl'],),
+                                      ),
+                                    );
+                                  },
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: FadeInImage.assetNetwork(
+                                      placeholder: 'assets/images/loading.gif',
+                                      image: post['imageUrl'],
+                                      fit: BoxFit.cover,
+                                    ),
                                   ),
-                                );
-                              },
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: FadeInImage.assetNetwork(
-                                  placeholder: 'assets/images/loading.gif',
-                                  image: post['imageUrl'],
-                                  fit: BoxFit.cover,
                                 ),
-                              ),
-                            ),
-                            if (user!= null && role != 'adminRole')...[
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  PopupMenuButton<String>(
-                                    color: Colors.white,
-                                    icon: Icon(Icons.more_horiz),
-                                    onSelected: (String result) async {
-                                      if (result == 'Delete') {
-                                        _databaseService.deletePost(post.id);
-                                      }
-                                      if (result == 'Favorite') {
-                                        bool addedToFavorites = await _databaseService.addPostFav(post.id);
-                                        if (addedToFavorites)
-                                          CustomAlertDialog.show(
-                                            context: context,
-                                            title: 'Успешно',
-                                            content: 'Пост был добавлен в избранное!',
-                                            buttonText: 'ОК',
-                                          );
+                                if (user!= null && role != 'adminRole')...[
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      PopupMenuButton<String>(
+                                        color: Colors.white,
+                                        icon: Icon(Icons.more_horiz),
+                                        onSelected: (String result) async {
+                                          if (result == 'Delete') {
+                                            _databaseService.deletePost(post.id);
+                                          }
+                                          if (result == 'Favorite') {
+                                            bool addedToFavorites = await _databaseService.addPostFav(post.id);
+                                            if (addedToFavorites) {
+                                              CustomAlertDialog.show(
+                                                context: context,
+                                                title: 'Успешно',
+                                                content: 'Пост был добавлен в избранное!',
+                                                buttonText: 'ОК',
+                                              );
+                                            } else {
+                                              CustomAlertDialog.show(
+                                              context: context,
+                                              title: 'Ошибка',
+                                              content: 'Пост уже в избранном!',
+                                              buttonText: 'ОК',
+                                            );
+                                            }
 
-                                        else CustomAlertDialog.show(
-                                          context: context,
-                                          title: 'Ошибка',
-                                          content: 'Пост уже в избранном!',
-                                          buttonText: 'ОК',
-                                        );
+                                          }
+                                          if(result == 'Download'){
+                                            downloadAndSaveImage(post['imageUrl']);
+                                          }
+                                        },
+                                        itemBuilder: (BuildContext context) {
+                                          List<PopupMenuEntry<String>> menuItems = [];
 
-                                      }
-                                      if(result == 'Download'){
-                                        downloadAndSaveImage(post['imageUrl']);
-                                      }
-                                    },
-                                    itemBuilder: (BuildContext context) {
-                                      List<PopupMenuEntry<String>> menuItems = [];
+                                            menuItems.add(const PopupMenuItem<String>(
+                                              value: 'Download',
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.download_outlined),
+                                                  SizedBox(width: 10,),
+                                                  Text("Скачать")
+                                                ],
+                                              ),
+                                            ));
 
-                                        menuItems.add(const PopupMenuItem<String>(
-                                          value: 'Download',
-                                          child: Row(
-                                            children: [
-                                              Icon(Icons.download_outlined),
-                                              SizedBox(width: 10,),
-                                              Text("Скачать")
-                                            ],
-                                          ),
-                                        ));
-
-                                      if (role!= null) {
-                                        menuItems.add(const PopupMenuItem<String>(
-                                          value: 'Favorite',
-                                          child: Row(
-                                            children: [
-                                              Icon(Icons.favorite_border),
-                                              SizedBox(width: 10,),
-                                              Text("В избранное")
-                                            ],
-                                          ),
-                                        ));
-                                      }
-                                      if(role!= null && role == 'userRole' && post['uid'] == user!.uid){
-                                        menuItems.add(const PopupMenuItem<String>(
-                                          value: 'Delete',
-                                          child: Row(
-                                            children: [
-                                              Icon(Icons.delete_outline),
-                                              SizedBox(width: 10,),
-                                              Text("Удалить")
-                                            ],
-                                          ),
-                                        ));
-                                      }
-                                      return menuItems;
-                                    },
+                                          if (role!= null) {
+                                            menuItems.add(const PopupMenuItem<String>(
+                                              value: 'Favorite',
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.favorite_border),
+                                                  SizedBox(width: 10,),
+                                                  Text("В избранное")
+                                                ],
+                                              ),
+                                            ));
+                                          }
+                                          if(role!= null && role == 'userRole' && post['uid'] == user!.uid){
+                                            menuItems.add(const PopupMenuItem<String>(
+                                              value: 'Delete',
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.delete_outline),
+                                                  SizedBox(width: 10,),
+                                                  Text("Удалить")
+                                                ],
+                                              ),
+                                            ));
+                                          }
+                                          return menuItems;
+                                        },
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ]
-                            else if(role == 'adminRole')...[
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  IconButton(onPressed: () {_databaseService.deletePost(post.id);}, icon: Icon(Icons.delete_outline))
-                                ],
-                              )
-                            ]
-                          ],
-                        ),
-                      ),
+                                ]
+                                else if(role == 'adminRole')...[
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      IconButton(onPressed: () {_databaseService.deletePost(post.id);}, icon: Icon(Icons.delete_outline))
+                                    ],
+                                  )
+                                ]
+                              ],
+                            ),
+                          ),
 
 
-                    );
-                  },
-                  staggeredTileBuilder: (int index) => StaggeredTile.fit(2),
-                  mainAxisSpacing: 4.0,
-                  crossAxisSpacing: 4.0,
-                ),),
+                        );
+                      },
+                      staggeredTileBuilder: (int index) => StaggeredTile.fit(2),
+                      mainAxisSpacing: 4.0,
+                      crossAxisSpacing: 4.0,
+                    ),),
 
-              ],),);
-        },
-      )
+                  ],),);
+            },
+                  ),
     );
   }
 }

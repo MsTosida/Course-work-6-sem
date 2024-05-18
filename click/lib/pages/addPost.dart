@@ -336,8 +336,12 @@ class _AddPostPageState extends State<AddPostPage> {
                 TextButton(
                   child: Text('OK', style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,),),
                   onPressed: () {
-                    Navigator.pushReplacement(
-                        context, MaterialPageRoute(builder: (context) => UserPage(selectedIndex: 0)));
+                    Navigator.of(context).pop();
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) =>UserPage(selectedIndex: 0,)),
+                          (Route<dynamic> route) => false,
+                    );
                   },
                 ),
               ],

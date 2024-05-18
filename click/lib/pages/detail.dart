@@ -18,15 +18,17 @@ import '../widgets/showDialog.dart';
 
 class DetailPage extends StatefulWidget {
   String id;
-  DetailPage({required this.id});
+  String? image;
+  DetailPage({required this.id, required this.image});
 
   @override
-  _DetailPageState createState() => _DetailPageState(id: id);
+  _DetailPageState createState() => _DetailPageState(id: id, image: image);
 }
 
 
 class _DetailPageState extends State<DetailPage> {
   String id;
+  String? image;
   User? user = FirebaseAuth.instance.currentUser;
   UserModel loggedInUser = UserModel();
   PostModel post = PostModel();
@@ -34,16 +36,16 @@ class _DetailPageState extends State<DetailPage> {
   var imageUrlForPost;
   var imageUrlForCurUser;
   var uId;
-  DateTime time =  DateTime.now();
   final DatabaseService _databaseService = DatabaseService();
   final userId = FirebaseAuth.instance.currentUser?.uid;
   bool isLiked = false;
   final postsRef = FirebaseFirestore.instance.collection('posts');
   final _formkeeey = GlobalKey<FormState>();
+  final _formkeeeyy = GlobalKey<FormState>();
   final FocusNode _focusNode = FocusNode();
   final _commentController = TextEditingController();
 
-  _DetailPageState({required this.id});
+  _DetailPageState({required this.id, required this.image});
   @override
   void initState() {
     super.initState();
@@ -143,7 +145,8 @@ class _DetailPageState extends State<DetailPage> {
       String? nameForUser = userSnapshot['name'];
       String? desc = postSnapshot['desc'];
       String? tags = postSnapshot['tags'];
-      return {'likes': likes, 'desc': desc, 'tags': tags, 'imageUrl': imageUrlForUser, 'name': nameForUser};
+      DateTime? time = postSnapshot['time'].toDate();
+      return {'likes': likes, 'desc': desc, 'tags': tags, 'imageUrl': imageUrlForUser, 'name': nameForUser, 'time': time};
     } else {
       return null;
     }
@@ -284,6 +287,7 @@ class _DetailPageState extends State<DetailPage> {
   Future<void> postComment(String text) async {
     try {
       final String commentId = Uuid().v4();
+      bool isChange = false;
 
       await FirebaseFirestore.instance
           .collection('posts')
@@ -295,6 +299,7 @@ class _DetailPageState extends State<DetailPage> {
             'uid': userId,
             'text': text,
             'time': Timestamp.now().toDate(),
+            'edit': isChange,
           }
         ])
       });
@@ -445,6 +450,124 @@ class _DetailPageState extends State<DetailPage> {
     }
   }
 
+
+  Future<void> editCom(String commentId, String newText) async {
+    try {
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(id)
+          .get();
+
+      if (snapshot.exists &&
+          snapshot.data() is Map<String, dynamic> &&
+          (snapshot.data() as Map<String, dynamic>).containsKey('comments')) {
+
+        Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+        List<dynamic> comments = data['comments']?? [];
+
+        comments.firstWhere((comment) => comment['cid'] == commentId, orElse: () {
+          throw Exception('Comment with ID $commentId not found.');
+        })['text'] = newText;
+
+        comments.firstWhere((comment) => comment['cid'] == commentId, orElse: () {
+          throw Exception('Comment with ID $commentId not found.');
+        })['edited'] = true;
+
+        await FirebaseFirestore.instance
+            .collection('posts')
+            .doc(id)
+            .update({
+          'comments': comments,
+        });
+
+        setState(() {});
+      } else {
+        print("Comment with ID $commentId not found.");
+      }
+    } on FirebaseException catch (e) {
+      print("Error editing comment: ${e.message}");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error editing comment: ${e.message}'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _editCom(BuildContext context, String commentId, String comText) async {
+    final TextEditingController textController = TextEditingController(text: comText);
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Редактировать комментарий', style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,)),
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                Form(
+                  key: _formkeeeyy,
+                  child:  Column(
+                    children: <Widget>[
+                      Container(
+                        padding: EdgeInsets.fromLTRB(20, 10, 20, 10),
+                        child: TextFormField(
+                          maxLength: 100,
+                          controller: textController,
+                          focusNode: _focusNode,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Color.fromRGBO(67, 108, 35, .3)), // Цвет границы при фокусе
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Color.fromRGBO(67, 108, 35, .3)), // Цвет границы при активации
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value!.isEmpty) {
+                              return "Заполните поле";
+                            }
+                            return null;
+                          },
+                          onSaved: (value) {
+                            textController.text = value!;
+                          },
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                      )
+
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: Text('Отмена', style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,)),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Сохранить', style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,)),
+              onPressed: () {
+                if (_formkeeeyy.currentState!.validate()) {
+                  editCom(commentId, textController.text);
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -574,394 +697,478 @@ class _DetailPageState extends State<DetailPage> {
 
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 150),
-          child: Column(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: imageUrlForPost!= null
-                    ? FadeInImage.assetNetwork(
-                  placeholder: 'assets/images/loading.gif',
-                  image: imageUrlForPost!,
-                  fit: BoxFit.cover,
-                )
-                    : Image.asset('assets/images/noPhoto.png'),
-              ),
-              SizedBox(height: 20,),
-              FutureBuilder<Map<String, dynamic>?>(
-                  future: getInfoPost(id?? 'defaultUserId'),
-                  builder: (BuildContext context, AsyncSnapshot<Map<String, dynamic>?> snapshot) {
-                    if (snapshot.hasError) {
-                      return Text('Ошибка: ${snapshot.error}');
-                    } else if (snapshot.hasData) {
-                      String? imageUrl = snapshot.data?['imageUrl'];
-                      String? name = snapshot.data?['name'];
-                      List likes = snapshot.data?['likes'];
-                      String? desc = snapshot.data?['desc'];
-                      String? tags = snapshot.data?['tags'];
-                      return Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body:
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 150),
+              child: Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: imageUrlForPost!= null
+                        ? FadeInImage.assetNetwork(
+                      placeholder: 'assets/images/loading.gif',
+                      image: image!,
+                      fit: BoxFit.cover,
+                    )
+                        : Image.asset('assets/images/noPhoto.png'),
+                  ),
+                  SizedBox(height: 20,),
+                  FutureBuilder<Map<String, dynamic>?>(
+                      future: getInfoPost(id?? 'defaultUserId'),
+                      builder: (BuildContext context, AsyncSnapshot<Map<String, dynamic>?> snapshot) {
+                        if (snapshot.hasError) {
+                          return Text('Ошибка: ${snapshot.error}');
+                        } else if (snapshot.hasData) {
+                          String? imageUrl = snapshot.data?['imageUrl'];
+                          String? name = snapshot.data?['name'];
+                          List likes = snapshot.data?['likes'];
+                          String? desc = snapshot.data?['desc'];
+                          String? tags = snapshot.data?['tags'];
+                          DateTime? timee = snapshot.data?['time'];
+
+                          return Column(
                             children: [
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Container(
-                                    width: 60,
-                                    height: 60,
-                                    padding: EdgeInsets.all(3),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Color.fromRGBO(172, 193, 91, 1),
-                                        width: 2,
-                                      ),
-                                    ),
-                                    child: CircleAvatar(
-                                      radius: 50,
-                                      backgroundImage: imageUrl!= null? NetworkImage(imageUrl) : AssetImage("assets/images/noPhoto.png") as ImageProvider,
-                                    ),
-                                  ),
-                                  SizedBox(width: 10,),
-                                  Text(
-                                    name?? 'userName',
-                                    style: TextStyle(
-                                      color: Color.fromRGBO(22, 31, 10, 1),
-                                      fontFamily: 'Montserrat',
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 20,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  )
-                                ],
-                              ),
-                              Row(
-                                children: [
-                                  IconButton(
-                                    onPressed: () {
-                                      if(user!= null){
-                                        if (likes.contains(userId)) {
-                                          dislikePost(context);
-                                        } else {
-                                          likePost(context);
-                                        }
-                                      }
-                                    },
-                                    icon: user!= null && likes.contains(userId)
-                                        ? const Icon(
-                                      Icons.favorite,
-                                      color: Color.fromRGBO(172, 193, 91, 1),
-                                    )
-                                        : const Icon(
-                                      Icons.favorite_border,
-                                      color: Color.fromRGBO(22, 31, 10, 1),
-                                    ),
-                                    splashColor: Colors.transparent,
-                                    highlightColor: Colors.transparent,
-                                  ),
-                                  Text(
-                                    likes.length.toString(),
-                                    style: const TextStyle(
-                                      color: Color.fromRGBO(22, 31, 10, 1),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 10,),
-                          Row(
-                            children: [
-                              Flexible(
-                                  child: Text(
-                                    desc?? 'Описание',
-                                    style: TextStyle(
-                                      color: Color.fromRGBO(22, 31, 10, 1),
-                                      fontFamily: 'Montserrat',
-                                      fontWeight: FontWeight.w400,
-                                      fontSize: 20,
-                                    ),
-                                  )
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 10,),
-                          Row(
-                            children:
-                            [Text(tags ?? 'tags', style: TextStyle(
-                              color: Color.fromRGBO(22, 31, 10, 1),
-                              fontFamily: 'Montserrat',
-                              fontWeight: FontWeight.w400,
-                              fontSize: 15,
-                            ),
-                          ),
-                    ]
-                    )
-                        ],
-                      );
-                    } else {
-                      return Text('Данные не найдены');
-                    }
-                  }),
-              SizedBox(height: 10,),
-              Row(
-                  children:[
-                    Text(
-                      DateFormat('dd.MM.yyyy').format(time) ?? 'Время',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontFamily: 'Montserrat',
-                        fontWeight: FontWeight.w400,
-                        fontSize: 15,
-                      ),
-                    )
-                  ]
-              ),
-              SizedBox(height: 30,),
-
-                 Row(
-                  children: [
-                    Text('Комментарии', style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1),
-                        fontFamily: 'Montserrat',
-                        fontWeight: FontWeight.w500,
-                        fontSize: 20),)
-                  ],
-                ),
-
-
-                StreamBuilder(
-                  stream: FirebaseFirestore.instance
-                      .collection('posts')
-                      .doc(id)
-                      .snapshots(),
-                  builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
-                    if (snapshot.hasError) {
-                      return const Center(
-                        child: Text('There was an error fetching comments'),
-                      );
-                    }
-                    if (!snapshot.hasData) {
-                      return const Center(
-                        child: Text('Пока пусто('),
-                      );
-                    }
-
-                    final post = snapshot.data;
-                    if (post == null) {
-                      return const Text('User data is not available');
-                    }
-
-                    final comments = post['comments'];
-                    bool hasComments = comments.isNotEmpty;
-
-                    return Column(
-                      children: [
-                        if (!hasComments)
-                          Container(
-                            padding: EdgeInsets.only(top: 30),
-                            child: Text(
-                              'Будьте первым!',
-                              style: TextStyle(
-                                color: Color.fromRGBO(22, 31, 10, 1),
-                                fontFamily: 'Montserrat',
-                                fontWeight: FontWeight.w400,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ),
-                      ...List.generate(
-                        comments.length,
-                            (index) {
-                          final comment = comments[index];
-                          DateTime time = comment['time'].toDate();
-                          final uid = comment['uid'];
-                          return FutureBuilder<DocumentSnapshot>(
-                            future: getUserData(uid),
-                            builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> userSnapshot) {
-                              if (userSnapshot.hasError) {
-                                return const Text('Error loading user data');
-                              }
-                              if (!userSnapshot.hasData) {
-                                return const Text('Loading user data...');
-                              }
-
-                              final userData = userSnapshot.data;
-                              if (userData == null) {
-                                return const Text('User data is not available');
-                              }
-
-                              final imageUrl = userData['imageUrl'];
-                              final name = userData['name'];
-
-                              return
-                                Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(10),
-                                    color: Colors.grey[200],
-                                  ),
-                                  padding: EdgeInsets.fromLTRB(15, 10, 10, 10),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                  Row(
                                     children: [
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 8),
-                                        child:
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Container(
-                                                  width: 40,
-                                                  height: 40,
-                                                  padding: EdgeInsets.all(3),
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    border: Border.all(
-                                                      color: Color.fromRGBO(172, 193, 91, 1),
-                                                      width: 2,
-                                                    ),
-                                                  ),
-                                                  child: CircleAvatar(
-                                                    radius: 50,
-                                                    backgroundImage: imageUrl!= null? NetworkImage(imageUrl) : AssetImage("assets/images/noPhoto.png") as ImageProvider,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  name,
-                                                  style: const TextStyle(
-                                                      color: Color.fromRGBO(22, 31, 10, 1),
-                                                      fontFamily: 'Montserrat',
-                                                      fontWeight: FontWeight.w500,
-                                                      fontSize: 18,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            if (userId != null && uid == user!.uid || role == 'adminRole')
-                                              IconButton(
-                                                icon: const Icon(Icons.delete_outline),
-                                                onPressed: () async {
-                                                  try {
-                                                    await deleteComment(comment['cid']);
-                                                  } catch (e) {
-                                                    print(e);
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text('$e'),
-                                                      ),
-                                                    );
-                                                  }
-                                                },
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 8),
-                                        child: Text(
-                                          comment['text'],
-                                          style: const TextStyle(
-                                            fontFamily: 'Montserrat',
-                                            fontWeight: FontWeight.w400,
-                                            fontSize: 18,
+                                      Container(
+                                        width: 60,
+                                        height: 60,
+                                        padding: EdgeInsets.all(3),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Color.fromRGBO(172, 193, 91, 1),
+                                            width: 2,
                                           ),
-                                          maxLines: 6,
+                                        ),
+                                        child: CircleAvatar(
+                                          radius: 50,
+                                          backgroundImage: imageUrl!= null? NetworkImage(imageUrl) : AssetImage("assets/images/noPhoto.png") as ImageProvider,
                                         ),
                                       ),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            DateFormat('dd.MM.yyyy').format(time),
-                                            style: TextStyle(color: Colors.grey,
-                                              fontFamily: 'Montserrat',
-                                              fontWeight: FontWeight.w400,
-                                            ),),
-                                        ],
+                                      SizedBox(width: 10,),
+                                      Text(
+                                        name?? 'userName',
+                                        style: TextStyle(
+                                          color: Color.fromRGBO(22, 31, 10, 1),
+                                          fontFamily: 'Montserrat',
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 20,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      )
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        onPressed: () {
+                                          if(user!= null){
+                                            if (likes.contains(userId)) {
+                                              dislikePost(context);
+                                            } else {
+                                              likePost(context);
+                                            }
+                                          }
+                                        },
+                                        icon: user!= null && likes.contains(userId)
+                                            ? const Icon(
+                                          Icons.favorite,
+                                          color: Color.fromRGBO(172, 193, 91, 1),
+                                        )
+                                            : const Icon(
+                                          Icons.favorite_border,
+                                          color: Color.fromRGBO(22, 31, 10, 1),
+                                        ),
+                                        splashColor: Colors.transparent,
+                                        highlightColor: Colors.transparent,
+                                      ),
+                                      Text(
+                                        likes.length.toString(),
+                                        style: const TextStyle(
+                                          color: Color.fromRGBO(22, 31, 10, 1),
+                                        ),
                                       ),
                                     ],
-                                  ),)
-
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ]);
-                  },
-                ),
-              ],
-          ),
-        ),
-          ),
-      bottomSheet:
-          Visibility(
-            visible: role == 'userRole',
-            child: Container(
-              color: Colors.grey[200],
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: TextFormField(
-                  controller: _commentController,
-                  textInputAction: TextInputAction.send,
-                  keyboardType: TextInputType.multiline,
-                  maxLines: 5,
-                  minLines: 1,
-
-                  style: const TextStyle(
-                    fontSize: 17,
-                  ),
-                  validator: (text) {
-                    if (text == null || text.isEmpty) {
-                      return 'Why do you want to post an empty comment?';
-                    }
-                    return null;
-                  },
-                  onFieldSubmitted: ((value) {
-                    if (_commentController.text.isNotEmpty) {
-                      postComment(_commentController.text);
-                      FocusScope.of(context).unfocus();
-                    }
-                  }),
-                  decoration: InputDecoration(
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        if (_commentController.text.isNotEmpty) {
-                          postComment(_commentController.text);
-                          FocusScope.of(context).unfocus();
-                        } else {
-                          ScaffoldMessenger.of(context)
-                            ..removeCurrentSnackBar()
-                            ..showSnackBar(
-                              const SnackBar(
-                                content:
-                                Text('Why do you want to post an empty comment?'),
+                                  ),
+                                ],
                               ),
-                            );
+                              SizedBox(height: 10,),
+                              Row(
+                                children: [
+                                  Flexible(
+                                      child: Text(
+                                        desc?? 'Описание',
+                                        style: TextStyle(
+                                          color: Color.fromRGBO(22, 31, 10, 1),
+                                          fontFamily: 'Montserrat',
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: 20,
+                                        ),
+                                      )
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 10,),
+                              Row(
+                                  children:
+                                  [Text(tags ?? 'tags', style: TextStyle(
+                                    color: Color.fromRGBO(22, 31, 10, 1),
+                                    fontFamily: 'Montserrat',
+                                    fontWeight: FontWeight.w400,
+                                    fontSize: 15,
+                                  ),
+                                  ),
+                                  ]
+                              ),
+                              SizedBox(height: 10,),
+                              Row(
+                                  children:[
+                                    Text(
+                                      DateFormat('dd.MM.yyyy').format(timee!) ?? 'Время',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontFamily: 'Montserrat',
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: 15,
+                                      ),
+                                    )
+                                  ]
+                              ),
+                            ],
+                          );
+                        } else {
+                          return Text('Данные не найдены');
                         }
-                      },
-                      icon: const Icon(Icons.send),
-                    ),
-                    contentPadding: const EdgeInsets.all(12),
-                    hintText: "Добавить комментарий",
-                    hintStyle: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontWeight: FontWeight.w400 // Пример веса шрифта
-                    ),
-                    border: const UnderlineInputBorder(),
+                      }),
 
+                  SizedBox(height: 30,),
+
+                  Row(
+                    children: [
+                      Text('Комментарии', style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1),
+                          fontFamily: 'Montserrat',
+                          fontWeight: FontWeight.w500,
+                          fontSize: 20),)
+                    ],
                   ),
-                  maxLength: 100,
-                ),
+                  StreamBuilder(
+                    stream: FirebaseFirestore.instance
+                        .collection('posts')
+                        .doc(id)
+                        .snapshots(),
+                    builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
+                      if (snapshot.hasError) {
+                        return const Center(
+                          child: Text('There was an error fetching comments'),
+                        );
+                      }
+                      if (!snapshot.hasData) {
+                        return const Center(
+                          child: Text('Пока пусто('),
+                        );
+                      }
+
+                      final post = snapshot.data;
+                      if (post == null) {
+                        return const Text('User data is not available');
+                      }
+
+                      final comments = post['comments'];
+                      bool hasComments = comments.isNotEmpty;
+
+                      return Column(
+                          children: [
+                            if (!hasComments)
+                              Container(
+                                padding: EdgeInsets.only(top: 30),
+                                child: Text(
+                                  'Будьте первым!',
+                                  style: TextStyle(
+                                    color: Color.fromRGBO(22, 31, 10, 1),
+                                    fontFamily: 'Montserrat',
+                                    fontWeight: FontWeight.w400,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                            ...List.generate(
+                              comments.length,
+                                  (index) {
+                                final comment = comments[index];
+                                DateTime time = comment['time'].toDate();
+                                final uid = comment['uid'];
+                                return FutureBuilder<DocumentSnapshot>(
+                                  future: getUserData(uid),
+                                  builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> userSnapshot) {
+                                    if (userSnapshot.hasError) {
+                                      return const Text('Error loading user data');
+                                    }
+                                    if (!userSnapshot.hasData) {
+                                      return const Text('Loading user data...');
+                                    }
+
+                                    final userData = userSnapshot.data;
+                                    if (userData == null) {
+                                      return const Text('User data is not available');
+                                    }
+
+                                    final imageUrl = userData['imageUrl'];
+                                    final name = userData['name'];
+                                    bool isEdited = comment['edited']?? false;
+
+                                    return
+                                      Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 8),
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.circular(10),
+                                              color: Colors.grey[200],
+                                            ),
+                                            padding: EdgeInsets.fromLTRB(15, 10, 10, 10),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Padding(
+                                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                                  child:
+                                                  Row(
+                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          Container(
+                                                            width: 40,
+                                                            height: 40,
+                                                            padding: EdgeInsets.all(3),
+                                                            decoration: BoxDecoration(
+                                                              shape: BoxShape.circle,
+                                                              border: Border.all(
+                                                                color: Color.fromRGBO(172, 193, 91, 1),
+                                                                width: 2,
+                                                              ),
+                                                            ),
+                                                            child: CircleAvatar(
+                                                              radius: 50,
+                                                              backgroundImage: imageUrl!= null? NetworkImage(imageUrl) : AssetImage("assets/images/noPhoto.png") as ImageProvider,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(width: 8),
+                                                          Text(
+                                                            name,
+                                                            style: const TextStyle(
+                                                              color: Color.fromRGBO(22, 31, 10, 1),
+                                                              fontFamily: 'Montserrat',
+                                                              fontWeight: FontWeight.w500,
+                                                              fontSize: 18,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+
+                                                      if(userId != null && uid == user!.uid)...[
+                                                        Row(
+                                                          mainAxisAlignment: MainAxisAlignment.end,
+                                                          children: [
+                                                            PopupMenuButton<String>(
+                                                              color: Colors.white,
+                                                              icon: Icon(Icons.more_vert),
+                                                              onSelected: (String result) async {
+                                                                if (result == 'Delete') {
+                                                                  try {
+                                                                    await deleteComment(comment['cid']);
+                                                                  } catch (e) {
+                                                                    print(e);
+                                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                                      SnackBar(
+                                                                        content: Text('$e'),
+                                                                      ),
+                                                                    );
+                                                                  }
+                                                                }
+                                                                if(result == 'Edit'){
+                                                                  try {
+                                                                    await _editCom(context, comment['cid'], comment['text']);
+                                                                  } catch (e) {
+                                                                    print(e);
+                                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                                      SnackBar(
+                                                                        content: Text('$e'),
+                                                                      ),
+                                                                    );
+                                                                  }
+                                                                }
+                                                              },
+                                                              itemBuilder: (BuildContext context) {
+                                                                List<PopupMenuEntry<String>> menuItems = [];
+
+                                                                menuItems.add(const PopupMenuItem<String>(
+                                                                  value: 'Edit',
+                                                                  child: Row(
+                                                                    children: [
+                                                                      Icon(Icons.edit),
+                                                                      SizedBox(width: 10,),
+                                                                      Text("Изменить")
+                                                                    ],
+                                                                  ),
+                                                                ));
+
+                                                                menuItems.add(const PopupMenuItem<String>(
+                                                                  value: 'Delete',
+                                                                  child: Row(
+                                                                    children: [
+                                                                      Icon(Icons.delete_outline),
+                                                                      SizedBox(width: 10,),
+                                                                      Text("Удалить")
+                                                                    ],
+                                                                  ),
+                                                                ));
+
+                                                                return menuItems;
+                                                              },
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ]
+                                                      else if(role == 'adminRole')...[
+                                                        Row(
+                                                          mainAxisAlignment: MainAxisAlignment.end,
+                                                          children: [
+                                                            IconButton(onPressed: () async {
+                                                              try {
+                                                                await deleteComment(comment['cid']);
+                                                              } catch (e) {
+                                                                print(e);
+                                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                                  SnackBar(
+                                                                    content: Text('$e'),
+                                                                  ),
+                                                                );
+                                                              }},
+                                                                icon: Icon(Icons.delete_outline))
+                                                          ],
+                                                        )
+                                                      ],
+
+
+
+                                                    ],
+                                                  ),
+                                                ),
+                                                Padding(
+                                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                                  child: Text(
+                                                    comment['text'],
+                                                    style: const TextStyle(
+                                                      fontFamily: 'Montserrat',
+                                                      fontWeight: FontWeight.w400,
+                                                      fontSize: 18,
+                                                    ),
+                                                    maxLines: 6,
+                                                  ),
+                                                ),
+                                                Row(
+                                                  children: [
+                                                    Text(
+                                                      DateFormat('dd.MM.yyyy').format(time),
+                                                      style: TextStyle(color: Colors.grey,
+                                                        fontFamily: 'Montserrat',
+                                                        fontWeight: FontWeight.w400,
+                                                      ),
+                                                    ),
+                                                    SizedBox(width: 5,),
+                                                    if (isEdited)
+                                                      Text('Изменено', style: TextStyle(
+                                                        color: Colors.grey,
+                                                        fontFamily: 'Montserrat',
+                                                        fontWeight: FontWeight.w400,
+                                                      )),
+                                                  ],
+                                                ),
+
+                                              ],
+                                            ),)
+
+                                      );
+                                  },
+                                );
+                              },
+                            ),
+                          ]);
+                    },
+                  ),
+                ],
               ),
             ),
-          )
+          ),
 
+
+      bottomSheet:
+      Visibility(
+        visible: role == 'userRole',
+      child: Container(
+        color: Colors.grey[200],
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: TextFormField(
+            controller: _commentController,
+            textInputAction: TextInputAction.send,
+            keyboardType: TextInputType.multiline,
+            maxLines: 5,
+            minLines: 1,
+
+            style: const TextStyle(
+              fontSize: 17,
+            ),
+            validator: (text) {
+              if (text == null || text.isEmpty) {
+                return 'Введите текст комментария';
+              }
+              return null;
+            },
+            onFieldSubmitted: ((value) {
+              if (_commentController.text.isNotEmpty) {
+                postComment(_commentController.text);
+                FocusScope.of(context).unfocus();
+              }
+            }),
+            decoration: InputDecoration(
+              suffixIcon: IconButton(
+                onPressed: () {
+                  if (_commentController.text.isNotEmpty) {
+                    postComment(_commentController.text);
+                    FocusScope.of(context).unfocus();
+                  } else {
+                    ScaffoldMessenger.of(context)
+                      ..removeCurrentSnackBar()
+                      ..showSnackBar(
+                        const SnackBar(
+                          content:
+                          Text('Why do you want to post an empty comment?'),
+                        ),
+                      );
+                  }
+                },
+                icon: const Icon(Icons.send),
+              ),
+              contentPadding: const EdgeInsets.all(12),
+              hintText: "Добавить комментарий",
+              hintStyle: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w400 // Пример веса шрифта
+              ),
+              border: const UnderlineInputBorder(),
+
+            ),
+            maxLength: 100,
+          ),
+        ),
+      ),
+    )
         );
   }
 }

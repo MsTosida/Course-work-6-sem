@@ -124,7 +124,7 @@ class _SearchPageState extends State<SearchPage> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => DetailPage(id: post.id),
+                                      builder: (context) => DetailPage(id: post.id, image: post['imageUrl'],),
                                     ),
                                   );
                                 },

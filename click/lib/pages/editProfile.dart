@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../widgets/showDialog.dart';
+
 
 class UpdateProfile extends StatefulWidget {
   String id;
@@ -27,10 +29,11 @@ class _UpdateProfileState extends State<UpdateProfile>  {
   String image;
   bool _isLoading = false;
   _UpdateProfileState({required this.id, required this.email, required this.name, required this.image});
-
+  bool _isOldPasswordChecked = false;
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController oldPassController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPassController = TextEditingController();
   final _auth = FirebaseAuth.instance;
@@ -55,7 +58,8 @@ class _UpdateProfileState extends State<UpdateProfile>  {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
+        leading:
+        IconButton(
           icon: Icon(Icons.arrow_back_ios_new),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -146,12 +150,41 @@ class _UpdateProfileState extends State<UpdateProfile>  {
                                           controller: nameController,
                                           decoration: InputDecoration(
                                             border: InputBorder.none,
-                                            hintText: name,
+                                            hintText: "Имя (${name})",
                                             hintStyle: TextStyle(color: Colors.grey.shade700, fontFamily: 'Montserrat', fontWeight: FontWeight.w400,),
                                           ),
                                           onSaved: (value) {
                                             nameController.text = value!;
                                           },
+                                          keyboardType: TextInputType.emailAddress,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: EdgeInsets.fromLTRB(20, 10, 20, 10),
+                                        decoration: BoxDecoration(
+                                            border: Border(bottom: BorderSide(
+                                                color: Color.fromRGBO(67, 108, 35, .3)
+                                            ))
+                                        ),
+                                        child: TextFormField(
+                                          controller: oldPassController,
+                                          decoration: InputDecoration(
+                                            border: InputBorder.none,
+                                            hintText: "Старый пароль",
+                                            hintStyle: TextStyle(color: Colors.grey.shade700, fontFamily: 'Montserrat', fontWeight: FontWeight.w400,),
+                                          ),
+                                          onSaved: (value) {
+                                            oldPassController.text = value!;
+                                          },
+                                          validator: (value) {
+                                            if(passwordController.text.isNotEmpty && value!.isEmpty){
+                                              return "Заполните это поле для изменение пароля!";
+                                            }
+                                            if(_isOldPasswordChecked == false){
+                                              return "Пароль неверный!";
+                                            }
+                                          },
+
                                           keyboardType: TextInputType.emailAddress,
                                         ),
                                       ),
@@ -171,9 +204,12 @@ class _UpdateProfileState extends State<UpdateProfile>  {
                                           ),
                                           validator: (value) {
                                             if(!passwordController.text.isEmpty){
-                                              RegExp regex = new RegExp(r'^.{6,}$');
+                                              RegExp regex = new RegExp(r'^[^ ]+$');
+                                              RegExp regex2 = new RegExp(r'^.{6,}$');
                                               if (!regex.hasMatch(value!)) {
-                                                return ("Пароль не меньше 6 символов");
+                                                return "Пароль не должен содержать пробелы";
+                                              } else if (!regex2.hasMatch(value!)) {
+                                                return "Пароль должен быть не менее 6 символов";
                                               } else {
                                                 return null;
                                               }
@@ -189,6 +225,7 @@ class _UpdateProfileState extends State<UpdateProfile>  {
                                         padding: EdgeInsets.fromLTRB(20, 10, 20, 10),
                                         child: TextFormField(
                                           controller: confirmPassController,
+
                                           decoration: InputDecoration(
                                             border: InputBorder.none,
                                             hintText: "Повторите пароль",
@@ -215,75 +252,122 @@ class _UpdateProfileState extends State<UpdateProfile>  {
                                 ),
                               ),
                           SizedBox(height: 20,),
-                         MaterialButton(
+                          MaterialButton(
                             onPressed: () async {
-                              if (_formkeyyy.currentState!.validate()) {
+                              if (nameController.text.isEmpty && passwordController.text.isEmpty && _image == null) {
+                                CustomAlertDialog.show(
+                                  context: context,
+                                  title: 'Ошибка',
+                                  content: 'Выберите что хотите изменить!',
+                                  buttonText: 'ОК',
+                                );
+                                return;
+                              }
 
+                              bool isOldPasswordCorrect = await _checkOldPassword(oldPassController.text);
+                              print(isOldPasswordCorrect);
+                              if (isOldPasswordCorrect == false){
+                                setState(() {
+                                  _isOldPasswordChecked = false;
+                                });
+                              }else if (isOldPasswordCorrect == true){
+                                setState(() {
+                                  _isOldPasswordChecked = true;
+                                });
+                              }
+
+
+                              if (_formkeyyy.currentState!.validate()) {
                                 setState(() {
                                   _isLoading = true;
                                 });
 
                                 _formkeyyy.currentState!.save();
-                                try {
-                                  if(!passwordController.text.isEmpty  && !confirmPassController.text.isEmpty){
-                                    await _auth.currentUser!.updatePassword(passwordController.text);
-                                    print("Пароль успешно изменен");
-                                  }
-                                } catch (e) {
-                                  print("Ошибка при изменении пароля: $e");
+                                DocumentReference userDocRef = FirebaseFirestore.instance.collection('users').doc(_auth.currentUser!.uid);
+                                DocumentSnapshot userDocSnap = await userDocRef.get();
+                                Map<String, dynamic> userData = userDocSnap.data() as Map<String, dynamic>;
+                                String? currentUserName = userData.containsKey('name')? userData['name'] : null;
+
+                                    try {
+                                      if (_isOldPasswordChecked && oldPassController.text == passwordController.text){
+                                        CustomAlertDialog.show(
+                                          context: context,
+                                          title: 'Ошибка',
+                                          content: 'Нельзя изменить данные на те же самые!',
+                                          buttonText: 'ОК',
+                                        );
+                                        setState(() {
+                                          _isLoading = false;
+                                        });
+                                        return;
+                                      }
+                                      if (!oldPassController.text.isEmpty && passwordController.text.isNotEmpty && passwordController.text!= oldPassController.text && confirmPassController.text.isNotEmpty) {
+                                        await _auth.currentUser!.updatePassword(passwordController.text);
+                                        print("Пароль успешно изменен");
+                                      }
+                                    } catch (e) {
+                                      print("Ошибка при изменении пароля: $e");
+                                    }
+
+                                    if (_image!= null) {
+                                      try {
+                                        Reference ref = FirebaseStorage.instance.ref().child('profileImages/${_auth.currentUser!.uid}');
+                                        UploadTask uploadTask = ref.putData(_image!);
+                                        TaskSnapshot snapshot = await uploadTask;
+                                        String downloadUrl = await snapshot.ref.getDownloadURL();
+                                        await userDocRef.update({'imageUrl': downloadUrl});
+                                        print("Изображение профиля успешно обновлено");
+                                      } catch (e) {
+                                        print("Ошибка при обновлении изображения профиля: $e");
+                                      }
+                                    }
+
+                                    try {
+                                      if (nameController.text.isNotEmpty){
+                                        if (nameController.text!= currentUserName) {
+                                          await userDocRef.update({'name': nameController.text});
+                                          print("Имя пользователя успешно обновлено");
+                                        }else{
+                                          CustomAlertDialog.show(
+                                            context: context,
+                                            title: 'Ошибка',
+                                            content: 'Нельзяяяяяя изменить данные на те же самые!',
+                                            buttonText: 'ОК',
+                                          );
+                                          setState(() {
+                                            _isLoading = false;
+                                          });
+                                          return;
+                                        }
+                                      }
+                                    } catch (e) {
+                                      print("Ошибка при обновлении имени пользователя: $e");
+                                    }
+
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title: Text("Успешно изменено", style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,)),
+                                        content: Text("Данные были успешно изменены", style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,)),
+                                        actions: <Widget>[
+                                          TextButton(
+                                            child: Text("ОК", style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,)),
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                              Navigator.pushAndRemoveUntil(
+                                                context,
+                                                MaterialPageRoute(builder: (context) => UserPage(selectedIndex: 4,)),
+                                                    (Route<dynamic> route) => false,
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
                                 }
-
-                                if (_image != null) {
-                                  try {
-                                    Reference ref = FirebaseStorage.instance.ref().child('profileImages/${_auth.currentUser!.uid}');
-                                    UploadTask uploadTask = ref.putData(_image!);
-                                    TaskSnapshot snapshot = await uploadTask;
-                                    String downloadUrl = await snapshot.ref.getDownloadURL();
-                                    // Обновление ссылки на изображение в Firestore
-
-                                    DocumentReference userDocRef = FirebaseFirestore.instance.collection('users').doc(_auth.currentUser!.uid);
-                                    await userDocRef.update({'imageUrl': downloadUrl});
-                                    print("Изображение профиля успешно обновлено");
-                                  } catch (e) {
-                                    print("Ошибка при обновлении изображения профиля: $e");
-                                  }
-                                }
-                                // Изменение имени пользователя
-
-                                try {
-                                  if(!nameController.text.isEmpty){
-                                    DocumentReference userDocRef = FirebaseFirestore.instance.collection('users').doc(_auth.currentUser!.uid);
-                                    await userDocRef.update({'name': nameController.text});
-                                    print("Имя пользователя успешно обновлено");
-                                  }
-                                } catch (e) {
-                                  print("Ошибка при обновлении имени пользователя: $e");
-                                }
-
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: Text("Успешно изменено", style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,)),
-                                      content: Text("Данные были успешно изменены", style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,)),
-                                      actions: <Widget>[
-                                        TextButton(
-                                          child: Text("ОК", style: TextStyle(color: Color.fromRGBO(15, 32, 26, 1), fontFamily: 'Montserrat', fontWeight: FontWeight.w500,)),
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                            Navigator.pushAndRemoveUntil(
-                                              context,
-                                              MaterialPageRoute(builder: (context) =>UserPage(selectedIndex: 4,)),
-                                                  (Route<dynamic> route) => false,
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              }
-                              },
+                            },
                             color: Color.fromRGBO(15, 32, 26, 1),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -328,6 +412,20 @@ class _UpdateProfileState extends State<UpdateProfile>  {
         .where('name', isEqualTo: username)
         .get();
     return result.docs.isEmpty;
+  }
+
+
+  Future<bool> _checkOldPassword(String oldPassword) async {
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: oldPassword,
+      );
+      return true;
+    } catch (e) {
+      print(e);
+      return false;
+    }
   }
 
 

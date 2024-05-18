@@ -74,7 +74,7 @@ class _controState extends State<contro> {
         id: id,
       );
     } else {
-      return Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color.fromRGBO(172, 193, 91, 1)), ));
     }
   }
 

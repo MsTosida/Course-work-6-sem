@@ -80,7 +80,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
             child: Column(
               children: [
                 Container(
-                  padding: EdgeInsets.only(bottom: 20),
+                  padding: EdgeInsets.fromLTRB(0, 10 ,0, 20),
                   child:
                     Row(
                       children: [
@@ -114,7 +114,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => DetailPage(id: post.id),
+                                    builder: (context) => DetailPage(id: post.id, image: post['imageUrl'],),
                                   ),
                                 );
                               },
@@ -168,6 +168,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
                                                   child: Text("ОК", style: TextStyle(color: Color.fromRGBO(22, 31, 10, 1)),),
                                                   onPressed: () {
                                                     Navigator.of(context).pop();
+                                                    setState(() {});
                                                   },
                                                 ),
                                               ],
